@@ -29,13 +29,14 @@ Adafruit_7segment matrix = Adafruit_7segment();
 int speakerPin = 12;
 int buzzerPin = 13;
 int rotarySelPins[ ] = {1, 2, 3, 4, 5, 6, 7, 8};
-int backButtonPin = 11;
+int backButtonPin = 9;
 int actionButtonPin = 10;
 
 int actionButtonState = 0;
 int backButtonState = 0;
 int rotarySelStates[ ] = {0, 0, 0, 0, 0, 0, 0, 0};
 int mode = 1;
+int displayNumber = 0;
 
 
 int numTones = 10;
@@ -61,7 +62,6 @@ void setup() {
   }
 
   //soundTest();
-
   //ledTest();
 
 }
@@ -84,8 +84,14 @@ void loop() {
     }
   }
 
+
+
+  displayNumber = mode + ((backButtonState == LOW) ? 1 : 0)*100 + ((actionButtonState == LOW)? 1 : 0)*1000;
+
+
+
   Serial.println(mode, DEC);
-  matrix.print(mode);
+  matrix.print(displayNumber);
   matrix.writeDisplay();
   delay(50);
 
