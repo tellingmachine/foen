@@ -26,12 +26,36 @@
 
 Adafruit_7segment matrix = Adafruit_7segment();
 
+int speakerPin = 12;
+int buzzerPin = 13;
+int numTones = 10; int tones[] = {261, 277, 294, 311, 330, 349, 370, 392, 415, 440}; 
+//                               mid C  C#   D    D#   E    F    F#   G    G#   A
+
+
 void setup() {
 #ifndef __AVR_ATtiny85__
   Serial.begin(9600);
   Serial.println("7 Segment Backpack Test");
 #endif
   matrix.begin(0x70);
+  
+  
+  pinMode(buzzerPin, OUTPUT);
+  for(int i = 0; i < 5; i++) 
+  { 
+    digitalWrite(buzzerPin, HIGH);
+    delay(1000);
+    digitalWrite(buzzerPin, LOW);
+    delay(500);
+  }
+
+  for (int i = 0; i < numTones; i++)  
+  {    
+    tone(speakerPin, tones[i]);    
+    delay(500);
+  }  
+  noTone(speakerPin); 
+
 }
 
 void loop() {
