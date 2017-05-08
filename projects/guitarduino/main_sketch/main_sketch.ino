@@ -1,22 +1,22 @@
-/*************************************************** 
+/***************************************************
   This is a library for our I2C LED Backpacks
 
-  Designed specifically to work with the Adafruit LED 7-Segment backpacks 
+  Designed specifically to work with the Adafruit LED 7-Segment backpacks
   ----> http://www.adafruit.com/products/881
   ----> http://www.adafruit.com/products/880
   ----> http://www.adafruit.com/products/879
   ----> http://www.adafruit.com/products/878
 
-  These displays use I2C to communicate, 2 pins are required to 
+  These displays use I2C to communicate, 2 pins are required to
   interface. There are multiple selectable I2C addresses. For backpacks
   with 2 Address Select pins: 0x70, 0x71, 0x72 or 0x73. For backpacks
   with 3 Address Select pins: 0x70 thru 0x77
 
-  Adafruit invests time and resources providing this open source code, 
-  please support Adafruit and open-source hardware by purchasing 
+  Adafruit invests time and resources providing this open source code,
+  please support Adafruit and open-source hardware by purchasing
   products from Adafruit!
 
-  Written by Limor Fried/Ladyada for Adafruit Industries.  
+  Written by Limor Fried/Ladyada for Adafruit Industries.
   BSD license, all text above must be included in any redistribution
  ****************************************************/
 
@@ -28,8 +28,19 @@ Adafruit_7segment matrix = Adafruit_7segment();
 
 int speakerPin = 12;
 int buzzerPin = 13;
-int numTones = 10; int tones[] = {261, 277, 294, 311, 330, 349, 370, 392, 415, 440}; 
-//                               mid C  C#   D    D#   E    F    F#   G    G#   A
+int rotarySelPins[ ] = {1, 2, 3, 4, 5, 6, 7, 8};
+int backButtonPin = 11;
+int actionButtonPin = 10;
+
+int actionButtonState = 0;
+int backButtonState = 0;
+int rotarySelStates[ ] = {0, 0, 0, 0, 0, 0, 0, 0};
+int mode = 1;
+
+
+int numTones = 10;
+int tones[] = {261, 277, 294, 311, 330, 349, 370, 392, 415, 440};
+//             mid C  C#   D    D#   E    F    F#   G    G#   A
 
 
 void setup() {
@@ -37,28 +48,55 @@ void setup() {
   Serial.begin(9600);
   Serial.println("7 Segment Backpack Test");
 #endif
+
   matrix.begin(0x70);
-  
-  
+
   pinMode(buzzerPin, OUTPUT);
-  for(int i = 0; i < 5; i++) 
-  { 
+  pinMode(backButtonPin, INPUT);
+  pinMode(actionButtonPin, INPUT);
+
+  for (int i = 0; i < 8; i++)
+  {
+    pinMode(rotarySelPins[i], INPUT);
+  }
+
+  for (int i = 0; i < 2; i++)
+  {
     digitalWrite(buzzerPin, HIGH);
     delay(1000);
     digitalWrite(buzzerPin, LOW);
     delay(500);
   }
 
-  for (int i = 0; i < numTones; i++)  
-  {    
-    tone(speakerPin, tones[i]);    
+  for (int i = 0; i < numTones; i++)
+  {
+    tone(speakerPin, tones[i]);
     delay(500);
-  }  
-  noTone(speakerPin); 
+  }
+  noTone(speakerPin);
 
 }
 
 void loop() {
+
+  backButtonState = digitalRead(backButtonPin);
+  actionButtonState = digitalRead(actionButtonPin);
+  
+  for (int i = 0; i < 8; i++)
+  {
+    rotarySelStates[i] = digitalRead(rotarySelPins[i]);
+  }
+  
+  for (int i = 0; i < 8; i++)
+  {
+    if( rotarySelStates[i] == LOW)
+    {
+      mode = i;
+    }
+  }
+
+  Serial.println(mode, DEC);
+
   // try to print a number thats too long
   matrix.print(10000, DEC);
   matrix.writeDisplay();
@@ -69,11 +107,16 @@ void loop() {
   matrix.writeDisplay();
   delay(500);
 
-  // print a floating point 
+  // print a floating point
   matrix.print(12.34);
   matrix.writeDisplay();
   delay(500);
-  
+
+  // print a floating point
+  matrix.print(mode);
+  matrix.writeDisplay();
+  delay(5000);
+
   // print with print/println
   for (uint16_t counter = 0; counter < 9999; counter++) {
     matrix.println(counter);
@@ -90,8 +133,8 @@ void loop() {
     matrix.drawColon(drawDots);
     matrix.writeDigitNum(3, (counter / 10) % 10, drawDots);
     matrix.writeDigitNum(4, counter % 10, drawDots);
-   
-    blinkcounter+=50;
+
+    blinkcounter += 50;
     if (blinkcounter < 500) {
       drawDots = false;
     } else if (blinkcounter < 1000) {
