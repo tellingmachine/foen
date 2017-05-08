@@ -52,28 +52,17 @@ void setup() {
   matrix.begin(0x70);
 
   pinMode(buzzerPin, OUTPUT);
-  pinMode(backButtonPin, INPUT);
-  pinMode(actionButtonPin, INPUT);
+  pinMode(backButtonPin, INPUT_PULLUP);
+  pinMode(actionButtonPin, INPUT_PULLUP);
 
   for (int i = 0; i < 8; i++)
   {
-    pinMode(rotarySelPins[i], INPUT);
+    pinMode(rotarySelPins[i], INPUT_PULLUP);
   }
 
-  for (int i = 0; i < 2; i++)
-  {
-    digitalWrite(buzzerPin, HIGH);
-    delay(1000);
-    digitalWrite(buzzerPin, LOW);
-    delay(500);
-  }
+  //soundTest();
 
-  for (int i = 0; i < numTones; i++)
-  {
-    tone(speakerPin, tones[i]);
-    delay(500);
-  }
-  noTone(speakerPin);
+  //ledTest();
 
 }
 
@@ -91,12 +80,39 @@ void loop() {
   {
     if( rotarySelStates[i] == LOW)
     {
-      mode = i;
+      mode = i + 1;
     }
   }
 
   Serial.println(mode, DEC);
+  matrix.print(mode);
+  matrix.writeDisplay();
+  delay(50);
 
+
+}
+
+void soundTest()
+{
+    for (int i = 0; i < 2; i++)
+  {
+    digitalWrite(buzzerPin, HIGH);
+    delay(1000);
+    digitalWrite(buzzerPin, LOW);
+    delay(500);
+  }
+
+  for (int i = 0; i < numTones; i++)
+  {
+    tone(speakerPin, tones[i]);
+    delay(500);
+  }
+  noTone(speakerPin);
+}
+
+
+void ledTest()
+{
   // try to print a number thats too long
   matrix.print(10000, DEC);
   matrix.writeDisplay();
@@ -112,7 +128,7 @@ void loop() {
   matrix.writeDisplay();
   delay(500);
 
-  // print a floating point
+  // print an integer
   matrix.print(mode);
   matrix.writeDisplay();
   delay(5000);
@@ -146,3 +162,4 @@ void loop() {
     delay(10);
   }
 }
+
