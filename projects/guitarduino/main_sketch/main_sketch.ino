@@ -38,6 +38,12 @@ int rotarySelStates[ ] = {0, 0, 0, 0, 0, 0, 0, 0};
 int mode = 1;
 int displayNumber = 0;
 
+long t1UpdateTime = 1000;
+int t1Duration = 60;
+int t1Time = 60;
+long t2UpdateTime = 10;
+unsigned long previousMillis = 0;
+
 
 int numTones = 10;
 int tones[] = {261, 277, 294, 311, 330, 349, 370, 392, 415, 440};
@@ -68,39 +74,77 @@ void setup() {
 
 void loop() {
 
+  readInput();
+
+
+
+  // check to see if it's time to change the state of the LED
+  unsigned long currentMillis = millis();
+
+  switch (mode) {
+    case 1:
+      if (currentMillis - previousMillis >= t1UpdateTime)
+      {
+        previousMillis = currentMillis;
+        displayNumber = t1Time;
+        
+        if(t1Time >= 0)
+        {
+          t1Time --;
+        }
+        else
+        {
+          t1Time = 60;
+        }
+
+
+      }
+      break;
+    case 2:
+      //do something when var equals 2
+      break;
+    default:
+      // if nothing else matches, do the default
+      // default is optional
+      break;
+  }
+
+
+  matrix.print(displayNumber);
+  matrix.writeDisplay();
+
+
+
+
+
+
+
+  //Serial.println(mode, DEC);
+}
+
+void readInput() {
   backButtonState = digitalRead(backButtonPin);
   actionButtonState = digitalRead(actionButtonPin);
-  
+
   for (int i = 0; i < 8; i++)
   {
     rotarySelStates[i] = digitalRead(rotarySelPins[i]);
   }
-  
+
   for (int i = 0; i < 8; i++)
   {
-    if( rotarySelStates[i] == LOW)
+    if ( rotarySelStates[i] == LOW)
     {
       mode = i + 1;
     }
   }
 
-
-
-  displayNumber = mode + ((backButtonState == LOW) ? 1 : 0)*100 + ((actionButtonState == LOW)? 1 : 0)*1000;
-
-
-
-  Serial.println(mode, DEC);
-  matrix.print(displayNumber);
-  matrix.writeDisplay();
-  delay(50);
-
-
+  //displayNumber = mode + ((backButtonState == LOW) ? 1 : 0) * 100 + ((actionButtonState == LOW) ? 1 : 0) * 1000;
 }
 
-void soundTest()
-{
-    for (int i = 0; i < 2; i++)
+void soundTest() {
+
+  for (int i = 0; i < 2; i++)
   {
     digitalWrite(buzzerPin, HIGH);
     delay(1000);
@@ -117,8 +161,7 @@ void soundTest()
 }
 
 
-void ledTest()
-{
+void ledTest() {
   // try to print a number thats too long
   matrix.print(10000, DEC);
   matrix.writeDisplay();
