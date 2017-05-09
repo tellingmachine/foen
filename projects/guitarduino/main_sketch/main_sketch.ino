@@ -97,7 +97,24 @@ void loop() {
 
   switch (mode) {
     case 1:
-      if (currentMillis - previousMillis >= t1UpdateInterval && (t1State == READY || t1State == ACTIVE))
+      
+      if(backButtonState == LOW)
+      {
+        t1State = READY;
+        t1Time = 60;
+        backButtonState = HIGH;
+        displayNumber = t1Time;
+        matrix.print(displayNumber);
+        matrix.writeDisplay();
+      }
+
+      if(actionButtonState == LOW)
+      {
+        t1State = ACTIVE;
+        actionButtonState = HIGH;
+      }
+      
+      if (currentMillis - previousMillis >= t1UpdateInterval && t1State == ACTIVE)
       {
         previousMillis = currentMillis;
         displayNumber = t1Time;
