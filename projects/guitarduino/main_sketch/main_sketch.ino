@@ -41,6 +41,8 @@ int mode = 1;
 int displayNumber = 0;
 
 
+int buzzerOnDuration = 1000;
+
 //timter t1 variables
 long t1UpdateInterval = 1000;
 int t1Duration = 60;
@@ -103,6 +105,7 @@ void loop() {
         t1State = READY;
         t1Time = 60;
         backButtonState = HIGH;
+        
         displayNumber = t1Time;
         matrix.print(displayNumber);
         matrix.writeDisplay();
@@ -132,6 +135,16 @@ void loop() {
         matrix.writeDisplay();
 
       }
+
+      if(t1State == FIRED)
+      {   
+        digitalWrite(buzzerPin, HIGH);
+      }
+      else
+      {
+        digitalWrite(buzzerPin, LOW);
+      }
+      
       break;
     case 2:
       //do something when var equals 2
