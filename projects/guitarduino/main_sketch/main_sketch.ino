@@ -105,9 +105,13 @@ void loop() {
         t1State = READY;
         t1Time = 60;
         backButtonState = HIGH;
-        
-        displayNumber = t1Time;
-        matrix.print(displayNumber);
+      }
+
+      if(t1State == READY)
+      {
+        matrix.writeDigitNum(0, mode, false);
+        matrix.writeDigitNum(3, 6, false);
+        matrix.writeDigitNum(4, 0, false);
         matrix.writeDisplay();
       }
 
