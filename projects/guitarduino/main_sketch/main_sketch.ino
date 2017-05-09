@@ -26,6 +26,8 @@
 
 Adafruit_7segment matrix = Adafruit_7segment();
 
+enum timerState {READY, ACTIVE, PAUSED, FIRED};
+
 int speakerPin = 12;
 int buzzerPin = 13;
 int rotarySelPins[ ] = {1, 2, 3, 4, 5, 6, 7, 8};
@@ -38,10 +40,22 @@ int rotarySelStates[ ] = {0, 0, 0, 0, 0, 0, 0, 0};
 int mode = 1;
 int displayNumber = 0;
 
-long t1UpdateTime = 1000;
+
+//timter t1 variables
+long t1UpdateInterval = 1000;
 int t1Duration = 60;
 int t1Time = 60;
-long t2UpdateTime = 10;
+timerState t1State = READY;
+
+//timer t1 functions
+//void reset()
+//void start()
+//void stop()
+//void pause()
+//void update()
+
+
+
 unsigned long previousMillis = 0;
 
 
@@ -83,7 +97,7 @@ void loop() {
 
   switch (mode) {
     case 1:
-      if (currentMillis - previousMillis >= t1UpdateTime)
+      if (currentMillis - previousMillis >= t1UpdateInterval && (t1State == READY || t1State == ACTIVE))
       {
         previousMillis = currentMillis;
         displayNumber = t1Time;
@@ -95,6 +109,7 @@ void loop() {
         else
         {
           t1Time = 60;
+          t1State = FIRED;
         }
         matrix.print(displayNumber);
         matrix.writeDisplay();
