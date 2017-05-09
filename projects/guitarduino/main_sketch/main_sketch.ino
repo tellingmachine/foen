@@ -88,7 +88,7 @@ void loop() {
         previousMillis = currentMillis;
         displayNumber = t1Time;
         
-        if(t1Time >= 0)
+        if(t1Time > 0)
         {
           t1Time --;
         }
@@ -96,7 +96,8 @@ void loop() {
         {
           t1Time = 60;
         }
-
+        matrix.print(displayNumber);
+        matrix.writeDisplay();
 
       }
       break;
@@ -110,8 +111,7 @@ void loop() {
   }
 
 
-  matrix.print(displayNumber);
-  matrix.writeDisplay();
+
 
 
 
