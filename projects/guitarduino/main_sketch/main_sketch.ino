@@ -28,6 +28,8 @@ Adafruit_7segment matrix = Adafruit_7segment();
 
 enum timerState {READY, ACTIVE, PAUSED, FIRED};
 
+enum activeAction {NONE, RESTART, PAUSE, RESUME, COUNT};
+
 int speakerPin = 12;
 int buzzerPin = 13;
 int rotarySelPins[ ] = {1, 2, 3, 4, 5, 6, 7, 8};
@@ -40,14 +42,21 @@ int rotarySelStates[ ] = {0, 0, 0, 0, 0, 0, 0, 0};
 int mode = 1;
 int displayNumber = 0;
 
+int buzzerChime1TimeBase = 500;
+String buzzerChime1Pattern = "|_||||_|";
+int buzzerChime1PauseBetweenPatterns = 2000;
+unsigned long buzzerChime1previousMillis = 0;
 
-int buzzerOnDuration = 1000;
 
 //timter t1 variables
 long t1UpdateInterval = 1000;
-int t1Duration = 60;
-int t1Time = 60;
+int t1Duration = 6;
+int t1Time = t1Duration;
 timerState t1State = READY;
+activeAction t1ActiveAction = RESTART;
+int t1BuzzerRepeats = 3;
+unsigned long t1previousMillis = 0;
+bool t1AutoRestart = false;
 
 //timer t1 functions
 //void reset()
@@ -55,10 +64,6 @@ timerState t1State = READY;
 //void stop()
 //void pause()
 //void update()
-
-
-
-unsigned long previousMillis = 0;
 
 
 int numTones = 10;
@@ -103,15 +108,15 @@ void loop() {
       if(backButtonState == LOW)
       {
         t1State = READY;
-        t1Time = 60;
+        t1Time = t1Duration;
         backButtonState = HIGH;
       }
 
       if(t1State == READY)
       {
         matrix.writeDigitNum(0, mode, false);
-        matrix.writeDigitNum(3, 6, false);
-        matrix.writeDigitNum(4, 0, false);
+        matrix.writeDigitNum(3, t1Duration / 10, false);
+        matrix.writeDigitNum(4, t1Duration % 10, false);
         matrix.writeDisplay();
       }
 
@@ -121,9 +126,9 @@ void loop() {
         actionButtonState = HIGH;
       }
       
-      if (currentMillis - previousMillis >= t1UpdateInterval && t1State == ACTIVE)
+      if (currentMillis - t1previousMillis >= t1UpdateInterval && t1State == ACTIVE)
       {
-        previousMillis = currentMillis;
+        t1previousMillis = currentMillis;
         displayNumber = t1Time;
         
         if(t1Time > 0)
@@ -132,7 +137,7 @@ void loop() {
         }
         else
         {
-          t1Time = 60;
+          t1Time = t1Duration;
           t1State = FIRED;
         }
         matrix.print(displayNumber);
@@ -141,8 +146,13 @@ void loop() {
       }
 
       if(t1State == FIRED)
-      {   
+      { 
         digitalWrite(buzzerPin, HIGH);
+        if (currentMillis - buzzerChime1previousMillis >= buzzerChime1TimeBase) //&& t1State == ACTIVE)
+        {
+          buzzerChime1previousMillis = currentMillis;
+          digitalWrite(buzzerPin, LOW);
+        }
       }
       else
       {
@@ -158,12 +168,6 @@ void loop() {
       // default is optional
       break;
   }
-
-
-
-
-
-
 
 
 
