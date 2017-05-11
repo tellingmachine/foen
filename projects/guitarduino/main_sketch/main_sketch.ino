@@ -49,7 +49,8 @@ String buzzerChime1Pattern = "|_||||_|";
 int buzzerChime1PauseBetweenPatterns = 2000;
 unsigned long buzzerChime1previousMillis = 0;
 int buzzerChime1State = LOW;
-int buzzerChimePatternRepeat = 3;
+int buzzerChime1PatternRepeatLimit = 3;
+int buzzerChime1PatternRepeated = 0;
 
 
 //timter t1 variables
@@ -151,21 +152,27 @@ void loop() {
 
       if (t1State == FIRED)
       {
-        if ((buzzerChime1State == HIGH) && (currentMillis - buzzerChime1previousMillis >= buzzerChime1TimeBase))
+        
+        if(buzzerChime1PatternRepeated < buzzerChime1PatternRepeatLimit)
         {
-          buzzerChime1State = LOW;  // Turn it off
-          buzzerChime1previousMillis = currentMillis;  // Remember the time
-          digitalWrite(buzzerPin, buzzerChime1State); // Update the actual buzzer
-        }
-        else if ((buzzerChime1State == LOW) && (currentMillis - buzzerChime1previousMillis >= buzzerChime1TimeBase))
-        {
-          buzzerChime1State = HIGH;  // turn it on
-          buzzerChime1previousMillis = currentMillis;   // Remember the time
-          digitalWrite(buzzerPin, buzzerChime1State); // Update the actual buzzer
+          if ((buzzerChime1State == HIGH) && (currentMillis - buzzerChime1previousMillis >= buzzerChime1TimeBase))
+          {
+            buzzerChime1State = LOW;  // Turn it off
+            buzzerChime1previousMillis = currentMillis;  // Remember the time
+            digitalWrite(buzzerPin, buzzerChime1State); // Update the actual buzzer
+            buzzerChime1PatternRepeated ++;
+          }
+          else if ((buzzerChime1State == LOW) && (currentMillis - buzzerChime1previousMillis >= buzzerChime1TimeBase))
+          {
+            buzzerChime1State = HIGH;  // turn it on
+            buzzerChime1previousMillis = currentMillis;   // Remember the time
+            digitalWrite(buzzerPin, buzzerChime1State); // Update the actual buzzer
+          }
         }
       }
-      else
+      else // Switch buzzer off if timer is no longer fired
       {
+        buzzerChime1PatternRepeated = 0;
         buzzerChime1State = LOW;  // Turn it off
         digitalWrite(buzzerPin, buzzerChime1State); // Update the actual buzzer
       }
