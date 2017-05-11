@@ -42,10 +42,14 @@ int rotarySelStates[ ] = {0, 0, 0, 0, 0, 0, 0, 0};
 int mode = 1;
 int displayNumber = 0;
 
-int buzzerChime1TimeBase = 500;
+
+//buzzer Chime1 variables
+int buzzerChime1TimeBase = 100;
 String buzzerChime1Pattern = "|_||||_|";
 int buzzerChime1PauseBetweenPatterns = 2000;
 unsigned long buzzerChime1previousMillis = 0;
+int buzzerChime1State = LOW;
+int buzzerChimePatternRepeat = 3;
 
 
 //timter t1 variables
@@ -104,15 +108,15 @@ void loop() {
 
   switch (mode) {
     case 1:
-      
-      if(backButtonState == LOW)
+
+      if (backButtonState == LOW)
       {
         t1State = READY;
         t1Time = t1Duration;
         backButtonState = HIGH;
       }
 
-      if(t1State == READY)
+      if (t1State == READY)
       {
         matrix.writeDigitNum(0, mode, false);
         matrix.writeDigitNum(3, t1Duration / 10, false);
@@ -120,18 +124,18 @@ void loop() {
         matrix.writeDisplay();
       }
 
-      if(actionButtonState == LOW)
+      if (actionButtonState == LOW)
       {
         t1State = ACTIVE;
         actionButtonState = HIGH;
       }
-      
+
       if (currentMillis - t1previousMillis >= t1UpdateInterval && t1State == ACTIVE)
       {
         t1previousMillis = currentMillis;
         displayNumber = t1Time;
-        
-        if(t1Time > 0)
+
+        if (t1Time > 0)
         {
           t1Time --;
         }
@@ -145,20 +149,27 @@ void loop() {
 
       }
 
-      if(t1State == FIRED)
-      { 
-        digitalWrite(buzzerPin, HIGH);
-        if (currentMillis - buzzerChime1previousMillis >= buzzerChime1TimeBase) //&& t1State == ACTIVE)
+      if (t1State == FIRED)
+      {
+        if ((buzzerChime1State == HIGH) && (currentMillis - buzzerChime1previousMillis >= buzzerChime1TimeBase))
         {
-          buzzerChime1previousMillis = currentMillis;
-          digitalWrite(buzzerPin, LOW);
+          buzzerChime1State = LOW;  // Turn it off
+          buzzerChime1previousMillis = currentMillis;  // Remember the time
+          digitalWrite(buzzerPin, buzzerChime1State); // Update the actual buzzer
+        }
+        else if ((buzzerChime1State == LOW) && (currentMillis - buzzerChime1previousMillis >= buzzerChime1TimeBase))
+        {
+          buzzerChime1State = HIGH;  // turn it on
+          buzzerChime1previousMillis = currentMillis;   // Remember the time
+          digitalWrite(buzzerPin, buzzerChime1State); // Update the actual buzzer
         }
       }
       else
       {
-        digitalWrite(buzzerPin, LOW);
+        buzzerChime1State = LOW;  // Turn it off
+        digitalWrite(buzzerPin, buzzerChime1State); // Update the actual buzzer
       }
-      
+
       break;
     case 2:
       //do something when var equals 2
