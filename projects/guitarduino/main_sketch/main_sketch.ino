@@ -20,6 +20,15 @@ int rotarySelStates[ ] = {0, 0, 0, 0, 0, 0, 0, 0};
 int mode = 1;
 int displayNumber = 0;
 
+//DisplayCodes
+//1H:1.0 'H'ybrid counter and timer 60s countdown time and counts button contacts
+//2U:15  'U'hr, timer counting down 15 minutes
+//3U:60  'U'hr, timer counting down 60 minutes
+//4S:0.0 'S'top Uhr, works like a stop watch. Displaying seconds and 100th of seconds 0 - 59.99 seconds and then minutes and seconds 1:00 - 99:59 min
+//5S:1.5 'S'top Uhr, works like a stop watch for Kumite matches. Counts down time from 01:30 min to 00:00 and allows pause resume
+//6S:2.0 'S'top Uhr, works like a stop watch for Kumite matches. Counts down time from 02:00 min to 00:00 and allows pause resume
+//7C:00  'C'ounter. Counts from 0 to 9999
+//8P:--  'P'rogramming... might be obsolete could be replaced by a U:3.0
 
 //buzzer Chime1 variables
 int buzzerChime1TimeBase = 100;
