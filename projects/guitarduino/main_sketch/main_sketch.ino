@@ -8,14 +8,15 @@ enum timerState {READY, ACTIVE, PAUSED, FIRED};
 
 enum activeAction {NONE, RESTART, PAUSE, RESUME, COUNT};
 
-int speakerPin = 12;
 int buzzerPin = 13;
 int rotarySelPins[ ] = {1, 2, 3, 4, 5, 6, 7, 8};
 int backButtonPin = 9;
 int actionButtonPin = 10;
+int actionExternalPin = 11;
 
 int actionButtonState = 0;
 int backButtonState = 0;
+int actionExternalState = 0;
 int rotarySelStates[ ] = {0, 0, 0, 0, 0, 0, 0, 0};
 int mode = 1;
 int displayNumber = 0;
@@ -28,7 +29,7 @@ int displayNumber = 0;
 //5S:1.5 'S'top Uhr, works like a stop watch for Kumite matches. Counts down time from 01:30 min to 00:00 and allows pause resume
 //6S:2.0 'S'top Uhr, works like a stop watch for Kumite matches. Counts down time from 02:00 min to 00:00 and allows pause resume
 //7C:00  'C'ounter. Counts from 0 to 9999
-//8P:--  'P'rogramming... might be obsolete could be replaced by a U:3.0
+//8P:--  'P'rogramming... might be obsolete could be replaced by a U:3.0 or become a programmable timer
 
 //buzzer Chime1 variables
 int buzzerChime1TimeBase = 100;
@@ -57,12 +58,6 @@ bool t1AutoRestart = false;
 //void pause()
 //void update()
 
-
-int numTones = 10;
-int tones[] = {261, 277, 294, 311, 330, 349, 370, 392, 415, 440};
-//             mid C  C#   D    D#   E    F    F#   G    G#   A
-
-
 void setup() {
 #ifndef __AVR_ATtiny85__
   Serial.begin(9600);
@@ -74,6 +69,7 @@ void setup() {
   pinMode(buzzerPin, OUTPUT);
   pinMode(backButtonPin, INPUT_PULLUP);
   pinMode(actionButtonPin, INPUT_PULLUP);
+  pinMode(actionExternalPin, INPUT_PULLUP);
 
   for (int i = 0; i < 8; i++)
   {
@@ -88,8 +84,6 @@ void setup() {
 void loop() {
 
   readInput();
-
-
 
   // check to see if it's time to change the state of the LED
   unsigned long currentMillis = millis();
@@ -118,6 +112,12 @@ void loop() {
         actionButtonState = HIGH;
       }
 
+      if (actionExternalState == LOW)
+      {
+        t1State = ACTIVE;
+        actionExternalState = HIGH;
+      }
+
       if (currentMillis - t1previousMillis >= t1UpdateInterval && t1State == ACTIVE)
       {
         t1previousMillis = currentMillis;
@@ -139,8 +139,8 @@ void loop() {
 
       if (t1State == FIRED)
       {
-        
-        if(buzzerChime1PatternRepeated < buzzerChime1PatternRepeatLimit)
+
+        if (buzzerChime1PatternRepeated < buzzerChime1PatternRepeatLimit)
         {
           if ((buzzerChime1State == HIGH) && (currentMillis - buzzerChime1previousMillis >= buzzerChime1TimeBase))
           {
@@ -183,6 +183,7 @@ void loop() {
 void readInput() {
   backButtonState = digitalRead(backButtonPin);
   actionButtonState = digitalRead(actionButtonPin);
+  actionExternalState = digitalRead(actionExternalPin);
 
   for (int i = 0; i < 8; i++)
   {
@@ -209,13 +210,6 @@ void soundTest() {
     digitalWrite(buzzerPin, LOW);
     delay(500);
   }
-
-  for (int i = 0; i < numTones; i++)
-  {
-    tone(speakerPin, tones[i]);
-    delay(500);
-  }
-  noTone(speakerPin);
 }
 
 
