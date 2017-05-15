@@ -100,10 +100,7 @@ void loop() {
 
       if (t1State == READY)
       {
-        matrix.writeDigitNum(0, mode, false);
-        matrix.writeDigitNum(3, t1Duration / 10, false);
-        matrix.writeDigitNum(4, t1Duration % 10, false);
-        matrix.writeDisplay();
+        UpdateDisplay(mode, t1Duration, t1State);
       }
 
       if (actionButtonState == LOW)
@@ -199,6 +196,17 @@ void readInput() {
   }
 
   //displayNumber = mode + ((backButtonState == LOW) ? 1 : 0) * 100 + ((actionButtonState == LOW) ? 1 : 0) * 1000;
+}
+
+
+void UpdateDisplay(int mode, int number, timerState state)
+{
+  //Only write to LED matrix, if there is a change in the input parameters
+  //See, if this fixes the downloading issue
+  matrix.writeDigitNum(0, mode, false);
+  matrix.writeDigitNum(3, number / 10, false);
+  matrix.writeDigitNum(4, number % 10, false);
+  matrix.writeDisplay();
 }
 
 void soundTest() {
