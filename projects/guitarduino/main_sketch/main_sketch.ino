@@ -2,6 +2,19 @@
 #include <Adafruit_GFX.h>
 #include "Adafruit_LEDBackpack.h"
 
+//7-Segment LED Raw Bit Drawing
+//    A  
+// F     B
+//    G
+// E     C
+//    D    P
+//Position:   PGFEDCBA
+//Bit Mask:  B11111111 
+// H:        B01110110
+// U:        
+// S:        
+// C:        
+
 Adafruit_7segment matrix = Adafruit_7segment();
 
 enum timerState {READY, ACTIVE, PAUSED, FIRED};
@@ -203,7 +216,10 @@ void UpdateDisplay(int mode, int number, timerState state)
 {
   //Only write to LED matrix, if there is a change in the input parameters
   //See, if this fixes the downloading issue
+  uint8_t rawMask = B01110110;
   matrix.writeDigitNum(0, mode, false);
+  matrix.writeDigitRaw(1,rawMask);
+  matrix.writeDigitRaw(2, B00000010); //Colon 0x2
   matrix.writeDigitNum(3, number / 10, false);
   matrix.writeDigitNum(4, number % 10, false);
   matrix.writeDisplay();
