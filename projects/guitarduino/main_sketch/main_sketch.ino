@@ -3,23 +3,31 @@
 #include "Adafruit_LEDBackpack.h"
 
 //7-Segment LED Raw Bit Drawing
-//    A  
+//    A
 // F     B
 //    G
 // E     C
 //    D    P
 //Position:   PGFEDCBA
-//Bit Mask:  B11111111 
+//Bit Mask:  B11111111
 // H:        B01110110
 // U:        B00111110
 // S:        B01101101
-// C:        B00111001        
-
-Adafruit_7segment matrix = Adafruit_7segment();
+// C:        B00111001
 
 enum timerState {READY, ACTIVE, PAUSED, FIRED};
-
 enum activeAction {NONE, RESTART, PAUSE, RESUME, COUNT};
+
+//Display variables
+Adafruit_7segment matrix = Adafruit_7segment();
+int modeCache = 0;
+int numberCache = 0;
+timerState timerStateCache = READY;
+uint8_t typeMaskCache = B00000000;
+
+
+
+
 
 int buzzerPin = 13;
 int rotarySelPins[ ] = {1, 2, 3, 4, 5, 6, 7, 8};
@@ -54,6 +62,7 @@ int buzzerChime1PatternRepeatLimit = 3;
 int buzzerChime1PatternRepeated = 0;
 
 
+
 //timter t1 variables
 long t1UpdateInterval = 1000;
 int t1Duration = 6;
@@ -63,6 +72,7 @@ activeAction t1ActiveAction = RESTART;
 int t1BuzzerRepeats = 3;
 unsigned long t1previousMillis = 0;
 bool t1AutoRestart = false;
+uint8_t t1TypeMask = B01110110;
 
 //timer t1 functions
 //void reset()
@@ -113,18 +123,20 @@ void loop() {
 
       if (t1State == READY)
       {
-        UpdateDisplay(mode, t1Duration, t1State);
+        UpdateDisplay(mode, t1Duration, t1State, t1TypeMask);
       }
 
       if (actionButtonState == LOW)
       {
         t1State = ACTIVE;
+        timerStateCache = t1State; //remove after switching over to useing UpdateDisplay
         actionButtonState = HIGH;
       }
 
       if (actionExternalState == LOW)
       {
         t1State = ACTIVE;
+        timerStateCache = t1State; //remove after switching over to useing UpdateDisplay
         actionExternalState = HIGH;
       }
 
@@ -141,6 +153,7 @@ void loop() {
         {
           t1Time = t1Duration;
           t1State = FIRED;
+          timerStateCache = t1State; //remove after switching over to useing UpdateDisplay
         }
         matrix.print(displayNumber);
         matrix.writeDisplay();
@@ -207,41 +220,48 @@ void readInput() {
       mode = i + 1;
     }
   }
-
-  //displayNumber = mode + ((backButtonState == LOW) ? 1 : 0) * 100 + ((actionButtonState == LOW) ? 1 : 0) * 1000;
 }
 
 
-void UpdateDisplay(int mode, int number, timerState state)
+void UpdateDisplay(int mode, int number, timerState state, uint8_t rawMask)
 {
-  //Only write to LED matrix, if there is a change in the input parameters
-  //See, if this fixes the downloading issue
-  uint8_t rawMask = B01110110;
-  matrix.writeDigitNum(0, mode, false);
-  matrix.writeDigitRaw(1,rawMask);
-  matrix.writeDigitRaw(2, B00000010); //Colon 0x2
 
-  int minutes = number / 60;
-  int tenthMinute = (number % 60) / 6;
-  
-  if(minutes > 9 && minutes < 100)
+  //See, if this fixes the downloading issue..didn't make a difference with the download issue
+
+  //Only write to LED matrix, if there is a change in the input parameters
+  if (mode != modeCache || number != numberCache || state != timerStateCache || rawMask != typeMaskCache)
   {
-    matrix.writeDigitNum(3, minutes / 10, false);
-    matrix.writeDigitNum(4, minutes % 10, false);
+    matrix.writeDigitNum(0, mode, false);
+    matrix.writeDigitRaw(1, rawMask);
+    matrix.writeDigitRaw(2, B00000010); //Colon 0x2
+
+    int minutes = number / 60;
+    int tenthMinute = (number % 60) / 6;
+
+    if (minutes > 9 && minutes < 100)
+    {
+      matrix.writeDigitNum(3, minutes / 10, false);
+      matrix.writeDigitNum(4, minutes % 10, false);
+    }
+    else if (minutes > 99)
+    {
+      minutes = 99;
+      matrix.writeDigitNum(3, minutes / 10, false);
+      matrix.writeDigitNum(4, minutes % 10, false);
+    }
+    else if (minutes < 10)
+    {
+      matrix.writeDigitNum(3, minutes, true);
+      matrix.writeDigitNum(4, tenthMinute % 10, false);
+    }
+
+    matrix.writeDisplay();
+
+    modeCache = mode;
+    numberCache = number;
+    timerStateCache = state;
+    typeMaskCache = rawMask;
   }
-  else if(minutes > 99)
-  {
-    minutes = 99;
-    matrix.writeDigitNum(3, minutes / 10, false);
-    matrix.writeDigitNum(4, minutes % 10, false);
-  }
-  else if(minutes < 10)
-  {
-    matrix.writeDigitNum(3, minutes, true);
-    matrix.writeDigitNum(4, tenthMinute % 10, false);
-  }
-  
-  matrix.writeDisplay();
 }
 
 void soundTest() {
