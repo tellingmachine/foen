@@ -11,9 +11,9 @@
 //Position:   PGFEDCBA
 //Bit Mask:  B11111111 
 // H:        B01110110
-// U:        
-// S:        
-// C:        
+// U:        B00111110
+// S:        B01101101
+// C:        B00111001        
 
 Adafruit_7segment matrix = Adafruit_7segment();
 
@@ -220,8 +220,27 @@ void UpdateDisplay(int mode, int number, timerState state)
   matrix.writeDigitNum(0, mode, false);
   matrix.writeDigitRaw(1,rawMask);
   matrix.writeDigitRaw(2, B00000010); //Colon 0x2
-  matrix.writeDigitNum(3, number / 10, false);
-  matrix.writeDigitNum(4, number % 10, false);
+
+  int minutes = number / 60;
+  int tenthMinute = (number % 60) / 6;
+  
+  if(minutes > 9 && minutes < 100)
+  {
+    matrix.writeDigitNum(3, minutes / 10, false);
+    matrix.writeDigitNum(4, minutes % 10, false);
+  }
+  else if(minutes > 99)
+  {
+    minutes = 99;
+    matrix.writeDigitNum(3, minutes / 10, false);
+    matrix.writeDigitNum(4, minutes % 10, false);
+  }
+  else if(minutes < 10)
+  {
+    matrix.writeDigitNum(3, minutes, true);
+    matrix.writeDigitNum(4, tenthMinute % 10, false);
+  }
+  
   matrix.writeDisplay();
 }
 
