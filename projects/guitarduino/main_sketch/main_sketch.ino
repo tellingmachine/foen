@@ -26,9 +26,6 @@ timerState timerStateCache = READY;
 uint8_t typeMaskCache = B00000000;
 
 
-
-
-
 int buzzerPin = 13;
 int rotarySelPins[ ] = {1, 2, 3, 4, 5, 6, 7, 8};
 int backButtonPin = 9;
@@ -61,8 +58,6 @@ int buzzerChime1State = LOW;
 int buzzerChime1PatternRepeatLimit = 3;
 int buzzerChime1PatternRepeated = 0;
 
-
-
 //timter t1 variables
 long t1UpdateInterval = 1000;
 int t1Duration = 6;
@@ -80,6 +75,62 @@ uint8_t t1TypeMask = B01110110;
 //void stop()
 //void pause()
 //void update()
+
+class Timer
+{
+    // Class Member Variables
+    // These are initialized at startup
+    int Duration;
+    activeAction ActiveAction;
+    int BuzzerRepeats;
+    bool AutoRestart;
+    uint8_t TypeMask;
+    Adafruit_7segment LEDMatrix;
+
+    int Time = Duration;
+    long UpdateInterval = 1000;
+
+    // These maintain the current state
+    timerState State;               // timer state
+    unsigned long previousMillis;   // will store last time the timer was updated
+
+    // Constructor - creates a Timer
+    // and initializes the member variables and state
+  public:
+    Timer(int duration, activeAction action, bool autoRestart, uint8_t typeMask, Adafruit_7segment ledmatrix, int buzzerRepeats)
+    {
+      int Duration = duration;
+      activeAction ActiveAction = action;
+      int BuzzerRepeats = buzzerRepeats;
+      bool AutoRestart = autoRestart;
+      uint8_t TypeMask = typeMask;
+      LEDMatrix = ledmatrix;
+
+      timerState State = READY;
+      previousMillis = 0;
+    }
+
+    void Update()
+    {
+//      // check to see if it's time to change the state of the LED
+//      unsigned long currentMillis = millis();
+//
+//      if ((ledState == HIGH) && (currentMillis - previousMillis >= OnTime))
+//      {
+//        ledState = LOW;  // Turn it off
+//        previousMillis = currentMillis;  // Remember the time
+//        digitalWrite(ledPin, ledState);  // Update the actual LED
+//      }
+//      else if ((ledState == LOW) && (currentMillis - previousMillis >= OffTime))
+//      {
+//        ledState = HIGH;  // turn it on
+//        previousMillis = currentMillis;   // Remember the time
+//        digitalWrite(ledPin, ledState);   // Update the actual LED
+//      }
+    }
+};
+
+Timer t1(6, RESTART, false, B01110110, matrix, 3);
 
 void setup() {
 #ifndef __AVR_ATtiny85__
