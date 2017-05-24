@@ -92,7 +92,10 @@ class Timer
 
     // These maintain the current state
     timerState State;               // timer state
-    timerState TimerStateCache;
+    timerState StateCache;
+    int ModeCache;
+    int NumberCache;
+    int Mode;
     unsigned long PreviousMillis;   // will store last time the timer was updated
     unsigned long CurrentMillis;
     // Constructor - creates a Timer
@@ -102,18 +105,21 @@ class Timer
   public:
     Timer(int duration, activeAction action, bool autoRestart, uint8_t typeMask, Adafruit_7segment ledmatrix, int buzzerRepeats, int mode)
     {
-      int Duration = duration;
-      activeAction ActiveAction = action;
-      int BuzzerRepeats = buzzerRepeats;
-      bool AutoRestart = autoRestart;
-      uint8_t TypeMask = typeMask;
-      int Mode = mode;
+      Duration = duration;
+      ActiveAction = action;
+      BuzzerRepeats = buzzerRepeats;
+      AutoRestart = autoRestart;
+      TypeMask = typeMask;
+      Mode = mode;
       LEDMatrix = ledmatrix;
 
-      timerState State = READY;
+      State = READY;
+      StateCache = READY;
+      ModeCache = 0;
+      NumberCache = 0;
+      
       PreviousMillis = 0;
       CurrentMillis = 0;
-      
     }
 
     void SetState(timerState state)
@@ -121,13 +127,48 @@ class Timer
       State = state;
       if (State == ACTIVE)
       {
-        TimerStateCache = State; //remove after switching over to using UpdateDisplay
+        StateCache = State; //remove after switching over to using UpdateDisplay
       }
     }
 
-    void UpdateDisplay(int mode, int duration, timerState state, uint8_t typeMask)
+    void UpdateDisplay(int mode, int number, timerState state, uint8_t rawMask)
     {
+      //See, if this fixes the downloading issue..didn't make a difference with the download issue
 
+      //Only write to LED matrix, if there is a change in the input parameters
+      if (mode != modeCache || number != numberCache || state != timerStateCache || rawMask != typeMaskCache)
+      {
+        LEDMatrix.writeDigitNum(0, mode, false);
+        LEDMatrix.writeDigitRaw(1, rawMask);
+        LEDMatrix.writeDigitRaw(2, B00000010); //Colon 0x2
+
+        int minutes = number / 60;
+        int tenthMinute = (number % 60) / 6;
+
+        if (minutes > 9 && minutes < 100)
+        {
+          LEDMatrix.writeDigitNum(3, minutes / 10, false);
+          LEDMatrix.writeDigitNum(4, minutes % 10, false);
+        }
+        else if (minutes > 99)
+        {
+          minutes = 99;
+          LEDMatrix.writeDigitNum(3, minutes / 10, false);
+          LEDMatrix.writeDigitNum(4, minutes % 10, false);
+        }
+        else if (minutes < 10)
+        {
+          LEDMatrix.writeDigitNum(3, minutes, true);
+          LEDMatrix.writeDigitNum(4, tenthMinute % 10, false);
+        }
+
+        LEDMatrix.writeDisplay();
+
+        modeCache = mode;
+        numberCache = number;
+        timerStateCache = state;
+        typeMaskCache = rawMask;
+      }
     }
 
     void Update()
@@ -136,26 +177,59 @@ class Timer
       if (State == READY)
       {
         Time = Duration;
-        //UpdateDisplay(mode, Duration, State, TypeMask);
+        UpdateDisplay(mode, Duration, State, TypeMask);
+      }
+
+      if (State == ACTIVE)
+      {
+        if (CurrentMillis - PreviousMillis >= UpdateInterval)
+        {
+          PreviousMillis = CurrentMillis;
+          displayNumber = Time;
+
+          if (Time > 0)
+          {
+            Time --;
+          }
+          else
+          {
+            Time = t1Duration;
+            State = FIRED;
+            StateCache = State; //remove after switching over to useing UpdateDisplay
+          }
+          matrix.print(displayNumber);
+          matrix.writeDisplay();
+
+        }
       }
 
 
+      if (State == FIRED)
+      {
 
-      //      // check to see if it's time to change the state of the LED
-      //      unsigned long currentMillis = millis();
-      //
-      //      if ((ledState == HIGH) && (currentMillis - previousMillis >= OnTime))
-      //      {
-      //        ledState = LOW;  // Turn it off
-      //        previousMillis = currentMillis;  // Remember the time
-      //        digitalWrite(ledPin, ledState);  // Update the actual LED
-      //      }
-      //      else if ((ledState == LOW) && (currentMillis - previousMillis >= OffTime))
-      //      {
-      //        ledState = HIGH;  // turn it on
-      //        previousMillis = currentMillis;   // Remember the time
-      //        digitalWrite(ledPin, ledState);   // Update the actual LED
-      //      }
+        if (buzzerChime1PatternRepeated < buzzerChime1PatternRepeatLimit)
+        {
+          if ((buzzerChime1State == HIGH) && (CurrentMillis - buzzerChime1previousMillis >= buzzerChime1TimeBase))
+          {
+            buzzerChime1State = LOW;  // Turn it off
+            buzzerChime1previousMillis = CurrentMillis;  // Remember the time
+            digitalWrite(buzzerPin, buzzerChime1State); // Update the actual buzzer
+            buzzerChime1PatternRepeated ++;
+          }
+          else if ((buzzerChime1State == LOW) && (CurrentMillis - buzzerChime1previousMillis >= buzzerChime1TimeBase))
+          {
+            buzzerChime1State = HIGH;  // turn it on
+            buzzerChime1previousMillis = CurrentMillis;   // Remember the time
+            digitalWrite(buzzerPin, buzzerChime1State); // Update the actual buzzer
+          }
+        }
+      }
+      else // Switch buzzer off if timer is no longer fired
+      {
+        buzzerChime1PatternRepeated = 0;
+        buzzerChime1State = LOW;  // Turn it off
+        digitalWrite(buzzerPin, buzzerChime1State); // Update the actual buzzer
+      }
     }
 };
 
@@ -187,7 +261,7 @@ void setup() {
 void loop() {
 
   readInput();
-  t2.Update();
+
 
 
   // check to see if it's time to change the state of the LED
@@ -285,57 +359,12 @@ void loop() {
 
       if (actionExternalState == LOW)
       {
-        t1State = ACTIVE;
-        timerStateCache = t1State; //remove after switching over to useing UpdateDisplay
+        t2.SetState(ACTIVE);
         actionExternalState = HIGH;
       }
+      t2.Update();
 
-      if (currentMillis - t1previousMillis >= t1UpdateInterval && t1State == ACTIVE)
-      {
-        t1previousMillis = currentMillis;
-        displayNumber = t1Time;
 
-        if (t1Time > 0)
-        {
-          t1Time --;
-        }
-        else
-        {
-          t1Time = t1Duration;
-          t1State = FIRED;
-          timerStateCache = t1State; //remove after switching over to useing UpdateDisplay
-        }
-        matrix.print(displayNumber);
-        matrix.writeDisplay();
-
-      }
-
-      if (t1State == FIRED)
-      {
-
-        if (buzzerChime1PatternRepeated < buzzerChime1PatternRepeatLimit)
-        {
-          if ((buzzerChime1State == HIGH) && (currentMillis - buzzerChime1previousMillis >= buzzerChime1TimeBase))
-          {
-            buzzerChime1State = LOW;  // Turn it off
-            buzzerChime1previousMillis = currentMillis;  // Remember the time
-            digitalWrite(buzzerPin, buzzerChime1State); // Update the actual buzzer
-            buzzerChime1PatternRepeated ++;
-          }
-          else if ((buzzerChime1State == LOW) && (currentMillis - buzzerChime1previousMillis >= buzzerChime1TimeBase))
-          {
-            buzzerChime1State = HIGH;  // turn it on
-            buzzerChime1previousMillis = currentMillis;   // Remember the time
-            digitalWrite(buzzerPin, buzzerChime1State); // Update the actual buzzer
-          }
-        }
-      }
-      else // Switch buzzer off if timer is no longer fired
-      {
-        buzzerChime1PatternRepeated = 0;
-        buzzerChime1State = LOW;  // Turn it off
-        digitalWrite(buzzerPin, buzzerChime1State); // Update the actual buzzer
-      }
       break;
     default:
       // if nothing else matches, do the default
