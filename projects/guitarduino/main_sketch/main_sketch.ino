@@ -32,7 +32,7 @@ int backButtonState = 0;
 int actionExternalState = 0;
 int rotarySelStates[ ] = {0, 0, 0, 0, 0, 0, 0, 0};
 int mode = 1;
-int displayNumber = 0;
+
 
 //DisplayCodes
 //1H:1.0 'H'ybrid counter and timer 60s countdown time and counts button contacts
@@ -84,10 +84,11 @@ class Timer
     int Mode;
     unsigned long PreviousMillis;   // will store last time the timer was updated
     unsigned long CurrentMillis;
+
+    int DisplayNumber;
+    
     // Constructor - creates a Timer
     // and initializes the member variables and state
-
-
   public:
     Timer(int duration, activeAction action, bool autoRestart, uint8_t typeMask, Adafruit_7segment ledmatrix, int buzzerRepeats, int mode)
     {
@@ -108,6 +109,8 @@ class Timer
       
       PreviousMillis = 0;
       CurrentMillis = 0;
+
+      DisplayNumber = 0;
     }
 
     void SetState(timerState state)
@@ -173,7 +176,7 @@ class Timer
         if (CurrentMillis - PreviousMillis >= UpdateInterval)
         {
           PreviousMillis = CurrentMillis;
-          displayNumber = Time;
+          DisplayNumber = Time;
 
           if (Time > 0)
           {
@@ -185,7 +188,7 @@ class Timer
             State = FIRED;
             StateCache = State; //remove after switching over to useing UpdateDisplay
           }
-          matrix.print(displayNumber);
+          matrix.print(DisplayNumber);
           matrix.writeDisplay();
 
         }
