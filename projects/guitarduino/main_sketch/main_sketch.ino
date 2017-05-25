@@ -22,7 +22,7 @@ enum activeAction {RESTART, PAUSE, RESUME, COUNT};
 Adafruit_7segment matrix = Adafruit_7segment();
 
 int buzzerPin = 13;
-int rotarySelPins[ ] = {1, 2, 3, 4, 5, 6, 7, 8};
+int rotarySelPins[ ] = {17, 2, 3, 4, 5, 6, 7, 8};
 int backButtonPin = 9;
 int actionButtonPin = 10;
 int actionExternalPin = 11;
@@ -86,7 +86,7 @@ class Timer
     unsigned long CurrentMillis;
 
     int DisplayNumber;
-    
+
     // Constructor - creates a Timer
     // and initializes the member variables and state
   public:
@@ -105,8 +105,8 @@ class Timer
       ModeCache = 0;
       NumberCache = 0;
       TypeMaskCache = B00000000;
-      
-      
+
+
       PreviousMillis = 0;
       CurrentMillis = 0;
 
@@ -116,50 +116,45 @@ class Timer
     void SetState(timerState state)
     {
       State = state;
-      if (State == ACTIVE)
-      {
-        StateCache = State; //remove after switching over to using UpdateDisplay
-      }
     }
 
-    void UpdateDisplay(int mode, int number, timerState state, uint8_t rawMask)
+    void UpdateDisplay()
     {
       //See, if this fixes the downloading issue..didn't make a difference with the download issue
+      Serial.println("Debug: UpdateDisplay called");
 
       //Only write to LED matrix, if there is a change in the input parameters
-      if (mode != ModeCache || number != NumberCache || state != StateCache || rawMask != TypeMaskCache)
+
+      Serial.println("Debug: UpdateDisplay setting display");
+      Serial.print("Mode=");
+      Serial.print(Mode);
+      Serial.println("");
+      LEDMatrix.writeDigitNum(0, Mode, false);
+      LEDMatrix.writeDigitRaw(1, TypeMask);
+      LEDMatrix.writeDigitRaw(2, B00000010); //Colon 0x2
+
+      int minutes = Duration / 60;
+      int tenthMinute = (Duration % 60) / 6;
+
+      if (minutes > 9 && minutes < 100)
       {
-        LEDMatrix.writeDigitNum(0, mode, false);
-        LEDMatrix.writeDigitRaw(1, rawMask);
-        LEDMatrix.writeDigitRaw(2, B00000010); //Colon 0x2
-
-        int minutes = number / 60;
-        int tenthMinute = (number % 60) / 6;
-
-        if (minutes > 9 && minutes < 100)
-        {
-          LEDMatrix.writeDigitNum(3, minutes / 10, false);
-          LEDMatrix.writeDigitNum(4, minutes % 10, false);
-        }
-        else if (minutes > 99)
-        {
-          minutes = 99;
-          LEDMatrix.writeDigitNum(3, minutes / 10, false);
-          LEDMatrix.writeDigitNum(4, minutes % 10, false);
-        }
-        else if (minutes < 10)
-        {
-          LEDMatrix.writeDigitNum(3, minutes, true);
-          LEDMatrix.writeDigitNum(4, tenthMinute % 10, false);
-        }
-
-        LEDMatrix.writeDisplay();
-
-        ModeCache = mode;
-        NumberCache = number;
-        StateCache = state;
-        TypeMaskCache = rawMask;
+        LEDMatrix.writeDigitNum(3, minutes / 10, false);
+        LEDMatrix.writeDigitNum(4, minutes % 10, false);
       }
+      else if (minutes > 99)
+      {
+        minutes = 99;
+        LEDMatrix.writeDigitNum(3, minutes / 10, false);
+        LEDMatrix.writeDigitNum(4, minutes % 10, false);
+      }
+      else if (minutes < 10)
+      {
+        LEDMatrix.writeDigitNum(3, minutes, true);
+        LEDMatrix.writeDigitNum(4, tenthMinute % 10, false);
+      }
+
+      LEDMatrix.writeDisplay();
+
     }
 
     void Update()
@@ -168,7 +163,7 @@ class Timer
       if (State == READY)
       {
         Time = Duration;
-        UpdateDisplay(mode, Duration, State, TypeMask);
+        UpdateDisplay();
       }
 
       if (State == ACTIVE)
@@ -297,8 +292,6 @@ void loop() {
         actionExternalState = HIGH;
       }
       t2.Update();
-
-
       break;
     default:
       // if nothing else matches, do the default
@@ -328,7 +321,12 @@ void readInput() {
     {
       mode = i + 1;
     }
+    rotarySelStates[i] = HIGH;
   }
+  Serial.println("Debug: readInput");
+  Serial.print("mode=");
+  Serial.print(mode);
+  Serial.println("");
 }
 
 
