@@ -71,7 +71,7 @@ class Timer
     bool AutoRestart;
     uint8_t TypeMask;
     uint8_t TypeMaskCache;
-    Adafruit_7segment LEDMatrix;
+    Adafruit_7segment *LEDMatrix;
 
     int Time = Duration;
     long UpdateInterval = 1000;
@@ -90,7 +90,7 @@ class Timer
     // Constructor - creates a Timer
     // and initializes the member variables and state
   public:
-    Timer(int duration, activeAction action, bool autoRestart, uint8_t typeMask, Adafruit_7segment ledmatrix, int buzzerRepeats, int mode)
+    Timer(int duration, activeAction action, bool autoRestart, uint8_t typeMask, Adafruit_7segment &ledmatrix, int buzzerRepeats, int mode)
     {
       Duration = duration;
       ActiveAction = action;
@@ -98,7 +98,7 @@ class Timer
       AutoRestart = autoRestart;
       TypeMask = typeMask;
       Mode = mode;
-      LEDMatrix = ledmatrix;
+      LEDMatrix = &ledmatrix;
 
       State = READY;
       StateCache = NONE;
@@ -129,31 +129,31 @@ class Timer
       Serial.print("Mode=");
       Serial.print(Mode);
       Serial.println("");
-      LEDMatrix.writeDigitNum(0, Mode, false);
-      LEDMatrix.writeDigitRaw(1, TypeMask);
-      LEDMatrix.writeDigitRaw(2, B00000010); //Colon 0x2
+      LEDMatrix->writeDigitNum(0, Mode, false);
+      LEDMatrix->writeDigitRaw(1, TypeMask);
+      LEDMatrix->writeDigitRaw(2, B00000010); //Colon 0x2
 
       int minutes = Duration / 60;
       int tenthMinute = (Duration % 60) / 6;
 
       if (minutes > 9 && minutes < 100)
       {
-        LEDMatrix.writeDigitNum(3, minutes / 10, false);
-        LEDMatrix.writeDigitNum(4, minutes % 10, false);
+        LEDMatrix->writeDigitNum(3, minutes / 10, false);
+        LEDMatrix->writeDigitNum(4, minutes % 10, false);
       }
       else if (minutes > 99)
       {
         minutes = 99;
-        LEDMatrix.writeDigitNum(3, minutes / 10, false);
-        LEDMatrix.writeDigitNum(4, minutes % 10, false);
+        LEDMatrix->writeDigitNum(3, minutes / 10, false);
+        LEDMatrix->writeDigitNum(4, minutes % 10, false);
       }
       else if (minutes < 10)
       {
-        LEDMatrix.writeDigitNum(3, minutes, true);
-        LEDMatrix.writeDigitNum(4, tenthMinute % 10, false);
+        LEDMatrix->writeDigitNum(3, minutes, true);
+        LEDMatrix->writeDigitNum(4, tenthMinute % 10, false);
       }
 
-      LEDMatrix.writeDisplay();
+      LEDMatrix->writeDisplay();
 
     }
 
@@ -183,8 +183,8 @@ class Timer
             State = FIRED;
             StateCache = State; //remove after switching over to useing UpdateDisplay
           }
-          matrix.print(DisplayNumber);
-          matrix.writeDisplay();
+          LEDMatrix->print(DisplayNumber);
+          LEDMatrix->writeDisplay();
 
         }
       }
@@ -323,10 +323,10 @@ void readInput() {
     }
     rotarySelStates[i] = HIGH;
   }
-  Serial.println("Debug: readInput");
-  Serial.print("mode=");
-  Serial.print(mode);
-  Serial.println("");
+  //Serial.println("Debug: readInput");
+  //Serial.print("mode=");
+  //Serial.print(mode);
+  //Serial.println("");
 }
 
 
