@@ -15,16 +15,11 @@
 // S:        B01101101
 // C:        B00111001
 
-enum timerState {READY, ACTIVE, PAUSED, FIRED};
-enum activeAction {NONE, RESTART, PAUSE, RESUME, COUNT};
+enum timerState {NONE, READY, ACTIVE, PAUSED, FIRED};
+enum activeAction {RESTART, PAUSE, RESUME, COUNT};
 
 //Display variables
 Adafruit_7segment matrix = Adafruit_7segment();
-int modeCache = 0;
-int numberCache = 0;
-timerState timerStateCache = READY;
-uint8_t typeMaskCache = B00000000;
-
 
 int buzzerPin = 13;
 int rotarySelPins[ ] = {1, 2, 3, 4, 5, 6, 7, 8};
@@ -58,18 +53,8 @@ int buzzerChime1State = LOW;
 int buzzerChime1PatternRepeatLimit = 3;
 int buzzerChime1PatternRepeated = 0;
 
-//timter t1 variables
-long t1UpdateInterval = 1000;
-int t1Duration = 6;
-int t1Time = t1Duration;
-timerState t1State = READY;
-activeAction t1ActiveAction = RESTART;
-int t1BuzzerRepeats = 3;
-unsigned long t1previousMillis = 0;
-bool t1AutoRestart = false;
-uint8_t t1TypeMask = B01110110;
 
-//timer t1 functions
+//timer functions
 //void reset()
 //void start()
 //void stop()
@@ -85,6 +70,7 @@ class Timer
     int BuzzerRepeats;
     bool AutoRestart;
     uint8_t TypeMask;
+    uint8_t TypeMaskCache;
     Adafruit_7segment LEDMatrix;
 
     int Time = Duration;
@@ -114,9 +100,11 @@ class Timer
       LEDMatrix = ledmatrix;
 
       State = READY;
-      StateCache = READY;
+      StateCache = NONE;
       ModeCache = 0;
       NumberCache = 0;
+      TypeMaskCache = B00000000;
+      
       
       PreviousMillis = 0;
       CurrentMillis = 0;
@@ -136,7 +124,7 @@ class Timer
       //See, if this fixes the downloading issue..didn't make a difference with the download issue
 
       //Only write to LED matrix, if there is a change in the input parameters
-      if (mode != modeCache || number != numberCache || state != timerStateCache || rawMask != typeMaskCache)
+      if (mode != ModeCache || number != NumberCache || state != StateCache || rawMask != TypeMaskCache)
       {
         LEDMatrix.writeDigitNum(0, mode, false);
         LEDMatrix.writeDigitRaw(1, rawMask);
@@ -164,10 +152,10 @@ class Timer
 
         LEDMatrix.writeDisplay();
 
-        modeCache = mode;
-        numberCache = number;
-        timerStateCache = state;
-        typeMaskCache = rawMask;
+        ModeCache = mode;
+        NumberCache = number;
+        StateCache = state;
+        TypeMaskCache = rawMask;
       }
     }
 
@@ -193,7 +181,7 @@ class Timer
           }
           else
           {
-            Time = t1Duration;
+            Time = Duration;
             State = FIRED;
             StateCache = State; //remove after switching over to useing UpdateDisplay
           }
@@ -233,6 +221,7 @@ class Timer
     }
 };
 
+Timer t1(6, RESTART, false, B01110110, matrix, 3, 1);
 Timer t2(60, RESTART, false, B01110110, matrix, 3, 2);
 
 void setup() {
@@ -262,87 +251,29 @@ void loop() {
 
   readInput();
 
-
-
   // check to see if it's time to change the state of the LED
   unsigned long currentMillis = millis();
 
   switch (mode) {
     case 1:
-
       if (backButtonState == LOW)
       {
-        t1State = READY;
-        t1Time = t1Duration;
+        t1.SetState(READY);
         backButtonState = HIGH;
-      }
-
-      if (t1State == READY)
-      {
-        UpdateDisplay(mode, t1Duration, t1State, t1TypeMask);
       }
 
       if (actionButtonState == LOW)
       {
-        t1State = ACTIVE;
-        timerStateCache = t1State; //remove after switching over to useing UpdateDisplay
+        t1.SetState(ACTIVE);
         actionButtonState = HIGH;
       }
 
       if (actionExternalState == LOW)
       {
-        t1State = ACTIVE;
-        timerStateCache = t1State; //remove after switching over to useing UpdateDisplay
+        t1.SetState(ACTIVE);
         actionExternalState = HIGH;
       }
-
-      if (currentMillis - t1previousMillis >= t1UpdateInterval && t1State == ACTIVE)
-      {
-        t1previousMillis = currentMillis;
-        displayNumber = t1Time;
-
-        if (t1Time > 0)
-        {
-          t1Time --;
-        }
-        else
-        {
-          t1Time = t1Duration;
-          t1State = FIRED;
-          timerStateCache = t1State; //remove after switching over to useing UpdateDisplay
-        }
-        matrix.print(displayNumber);
-        matrix.writeDisplay();
-
-      }
-
-      if (t1State == FIRED)
-      {
-
-        if (buzzerChime1PatternRepeated < buzzerChime1PatternRepeatLimit)
-        {
-          if ((buzzerChime1State == HIGH) && (currentMillis - buzzerChime1previousMillis >= buzzerChime1TimeBase))
-          {
-            buzzerChime1State = LOW;  // Turn it off
-            buzzerChime1previousMillis = currentMillis;  // Remember the time
-            digitalWrite(buzzerPin, buzzerChime1State); // Update the actual buzzer
-            buzzerChime1PatternRepeated ++;
-          }
-          else if ((buzzerChime1State == LOW) && (currentMillis - buzzerChime1previousMillis >= buzzerChime1TimeBase))
-          {
-            buzzerChime1State = HIGH;  // turn it on
-            buzzerChime1previousMillis = currentMillis;   // Remember the time
-            digitalWrite(buzzerPin, buzzerChime1State); // Update the actual buzzer
-          }
-        }
-      }
-      else // Switch buzzer off if timer is no longer fired
-      {
-        buzzerChime1PatternRepeated = 0;
-        buzzerChime1State = LOW;  // Turn it off
-        digitalWrite(buzzerPin, buzzerChime1State); // Update the actual buzzer
-      }
-
+      t1.Update();
       break;
     case 2:
       if (backButtonState == LOW)
@@ -397,47 +328,6 @@ void readInput() {
   }
 }
 
-
-void UpdateDisplay(int mode, int number, timerState state, uint8_t rawMask)
-{
-
-  //See, if this fixes the downloading issue..didn't make a difference with the download issue
-
-  //Only write to LED matrix, if there is a change in the input parameters
-  if (mode != modeCache || number != numberCache || state != timerStateCache || rawMask != typeMaskCache)
-  {
-    matrix.writeDigitNum(0, mode, false);
-    matrix.writeDigitRaw(1, rawMask);
-    matrix.writeDigitRaw(2, B00000010); //Colon 0x2
-
-    int minutes = number / 60;
-    int tenthMinute = (number % 60) / 6;
-
-    if (minutes > 9 && minutes < 100)
-    {
-      matrix.writeDigitNum(3, minutes / 10, false);
-      matrix.writeDigitNum(4, minutes % 10, false);
-    }
-    else if (minutes > 99)
-    {
-      minutes = 99;
-      matrix.writeDigitNum(3, minutes / 10, false);
-      matrix.writeDigitNum(4, minutes % 10, false);
-    }
-    else if (minutes < 10)
-    {
-      matrix.writeDigitNum(3, minutes, true);
-      matrix.writeDigitNum(4, tenthMinute % 10, false);
-    }
-
-    matrix.writeDisplay();
-
-    modeCache = mode;
-    numberCache = number;
-    timerStateCache = state;
-    typeMaskCache = rawMask;
-  }
-}
 
 void soundTest() {
 
