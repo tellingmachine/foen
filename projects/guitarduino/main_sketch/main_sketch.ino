@@ -73,19 +73,15 @@ class Buzzer
       CurrentMillis = 0;
     }
 
-    void Stop()
-    {
-      State = LOW;
-    }
-
     void Reset()
     {
       PreviousMillis = 0;
       CurrentMillis = 0;
       PatternRepeated = 0;
       State = LOW;
+      digitalWrite(Pin, State); // Update the actual buzzer
     }
-    
+
     void Play()
     {
       CurrentMillis = millis();
@@ -193,7 +189,6 @@ class Timer
       if (State == READY)
       {
         Time = Duration;
-        Chime->Reset();
         UpdateDisplay();
       }
 
@@ -223,6 +218,10 @@ class Timer
       if (State == FIRED)
       {
         Chime->Play();
+      }
+      else
+      {
+        Chime->Reset();
       }
     }
 };
