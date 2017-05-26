@@ -109,33 +109,16 @@ class Buzzer
 };
 
 
-//buzzer Chime1 variables
-int buzzerChime1TimeBase = 100;
-String buzzerChime1Pattern = "|_||||_|";
-int buzzerChime1PauseBetweenPatterns = 2000;
-unsigned long buzzerChime1previousMillis = 0;
-int buzzerChime1State = LOW;
-int buzzerChime1PatternRepeatLimit = 3;
-int buzzerChime1PatternRepeated = 0;
-
-
-//timer functions
-//void reset()
-//void start()
-//void stop()
-//void pause()
-//void update()
-
 class Timer
 {
     // Class Member Variables
     // These are initialized at startup
     int Duration;
     activeAction ActiveAction;
-    int BuzzerRepeats;
     bool AutoRestart;
     uint8_t TypeMask;
     Adafruit_7segment *LEDMatrix;
+    Buzzer *Chime;
 
     int Time = Duration;
     long UpdateInterval = 1000;
@@ -151,11 +134,11 @@ class Timer
     // Constructor - creates a Timer
     // and initializes the member variables and state
   public:
-    Timer(int duration, activeAction action, bool autoRestart, uint8_t typeMask, Adafruit_7segment &ledmatrix, int buzzerRepeats, int mode)
+    Timer(int duration, activeAction action, bool autoRestart, uint8_t typeMask, Adafruit_7segment &ledmatrix, Buzzer &chime, int mode)
     {
       Duration = duration;
       ActiveAction = action;
-      BuzzerRepeats = buzzerRepeats;
+      Chime = &chime;
       AutoRestart = autoRestart;
       TypeMask = typeMask;
       Mode = mode;
@@ -210,6 +193,7 @@ class Timer
       if (State == READY)
       {
         Time = Duration;
+        Chime->Reset();
         UpdateDisplay();
       }
 
@@ -238,37 +222,15 @@ class Timer
 
       if (State == FIRED)
       {
-
-        if (buzzerChime1PatternRepeated < buzzerChime1PatternRepeatLimit)
-        {
-          if ((buzzerChime1State == HIGH) && (CurrentMillis - buzzerChime1previousMillis >= buzzerChime1TimeBase))
-          {
-            buzzerChime1State = LOW;  // Turn it off
-            buzzerChime1previousMillis = CurrentMillis;  // Remember the time
-            digitalWrite(buzzerPin, buzzerChime1State); // Update the actual buzzer
-            buzzerChime1PatternRepeated ++;
-          }
-          else if ((buzzerChime1State == LOW) && (CurrentMillis - buzzerChime1previousMillis >= buzzerChime1TimeBase))
-          {
-            buzzerChime1State = HIGH;  // turn it on
-            buzzerChime1previousMillis = CurrentMillis;   // Remember the time
-            digitalWrite(buzzerPin, buzzerChime1State); // Update the actual buzzer
-          }
-        }
+        Chime->Play();
       }
-//      else // Switch buzzer off if timer is no longer fired
-//      {
-//        buzzerChime1PatternRepeated = 0;
-//        buzzerChime1State = LOW;  // Turn it off
-//        digitalWrite(buzzerPin, buzzerChime1State); // Update the actual buzzer
-//      }
     }
 };
 
 Buzzer chime1(100, B11111111 , 2000, 6, buzzerPin);
 
-Timer t1(6, RESTART, false, B01110110, matrix, 3, 1);
-Timer t2(60, RESTART, false, B01110110, matrix, 3, 2);
+Timer t1(6, RESTART, false, B01110110, matrix, chime1, 1);
+Timer t2(60, RESTART, false, B01110110, matrix, chime1, 2);
 
 void setup() {
 #ifndef __AVR_ATtiny85__
@@ -292,9 +254,6 @@ void setup() {
 void loop() {
 
   readInput();
-
-  chime1.Play();
-  
 
   switch (mode) {
     case 1:
