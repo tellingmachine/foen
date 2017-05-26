@@ -78,9 +78,6 @@ class Timer
 
     // These maintain the current state
     timerState State;               // timer state
-    timerState StateCache;
-    int ModeCache;
-    int NumberCache;
     int Mode;
     unsigned long PreviousMillis;   // will store last time the timer was updated
     unsigned long CurrentMillis;
@@ -99,12 +96,7 @@ class Timer
       TypeMask = typeMask;
       Mode = mode;
       LEDMatrix = &ledmatrix;
-
       State = READY;
-      StateCache = NONE;
-      ModeCache = 0;
-      NumberCache = 0;
-      TypeMaskCache = B00000000;
 
 
       PreviousMillis = 0;
@@ -120,15 +112,6 @@ class Timer
 
     void UpdateDisplay()
     {
-      //See, if this fixes the downloading issue..didn't make a difference with the download issue
-      Serial.println("Debug: UpdateDisplay called");
-
-      //Only write to LED matrix, if there is a change in the input parameters
-
-      Serial.println("Debug: UpdateDisplay setting display");
-      Serial.print("Mode=");
-      Serial.print(Mode);
-      Serial.println("");
       LEDMatrix->writeDigitNum(0, Mode, false);
       LEDMatrix->writeDigitRaw(1, TypeMask);
       LEDMatrix->writeDigitRaw(2, B00000010); //Colon 0x2
@@ -181,7 +164,6 @@ class Timer
           {
             Time = Duration;
             State = FIRED;
-            StateCache = State; //remove after switching over to useing UpdateDisplay
           }
           LEDMatrix->print(DisplayNumber);
           LEDMatrix->writeDisplay();
@@ -239,10 +221,6 @@ void setup() {
   {
     pinMode(rotarySelPins[i], INPUT_PULLUP);
   }
-
-  //soundTest();
-  //ledTest();
-
 }
 
 void loop() {
@@ -298,11 +276,6 @@ void loop() {
       // default is optional
       break;
   }
-
-
-
-
-  //Serial.println(mode, DEC);
 }
 
 void readInput() {
@@ -327,69 +300,5 @@ void readInput() {
   //Serial.print("mode=");
   //Serial.print(mode);
   //Serial.println("");
-}
-
-
-void soundTest() {
-
-  for (int i = 0; i < 2; i++)
-  {
-    digitalWrite(buzzerPin, HIGH);
-    delay(1000);
-    digitalWrite(buzzerPin, LOW);
-    delay(500);
-  }
-}
-
-
-void ledTest() {
-  // try to print a number thats too long
-  matrix.print(10000, DEC);
-  matrix.writeDisplay();
-  delay(500);
-
-  // print a hex number
-  matrix.print(0xBEEF, HEX);
-  matrix.writeDisplay();
-  delay(500);
-
-  // print a floating point
-  matrix.print(12.34);
-  matrix.writeDisplay();
-  delay(500);
-
-  // print an integer
-  matrix.print(mode);
-  matrix.writeDisplay();
-  delay(5000);
-
-  // print with print/println
-  for (uint16_t counter = 0; counter < 9999; counter++) {
-    matrix.println(counter);
-    matrix.writeDisplay();
-    delay(10);
-  }
-
-  // method #2 - draw each digit
-  uint16_t blinkcounter = 0;
-  boolean drawDots = false;
-  for (uint16_t counter = 0; counter < 9999; counter ++) {
-    matrix.writeDigitNum(0, (counter / 1000), drawDots);
-    matrix.writeDigitNum(1, (counter / 100) % 10, drawDots);
-    matrix.drawColon(drawDots);
-    matrix.writeDigitNum(3, (counter / 10) % 10, drawDots);
-    matrix.writeDigitNum(4, counter % 10, drawDots);
-
-    blinkcounter += 50;
-    if (blinkcounter < 500) {
-      drawDots = false;
-    } else if (blinkcounter < 1000) {
-      drawDots = true;
-    } else {
-      blinkcounter = 0;
-    }
-    matrix.writeDisplay();
-    delay(10);
-  }
 }
 
