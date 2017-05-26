@@ -44,6 +44,71 @@ int mode = 1;
 //7C:00  'C'ounter. Counts from 0 to 9999
 //8P:--  'P'rogramming... might be obsolete could be replaced by a U:3.0 or become a programmable timer
 
+class Buzzer
+{
+    //Buzzer variables
+    int Timebase;
+    uint8_t Pattern = B11111111;
+    int PauseBetweenPatterns = 2000;
+    int State = LOW;
+    int PatternRepeatLimit = 3;
+    int PatternRepeated = 0;
+    int Pin;
+    unsigned long PreviousMillis;   // will store last time the timer was updated
+    unsigned long CurrentMillis;
+
+    // Constructor - creates a Timer
+    // and initializes the member variables and state
+  public:
+    Buzzer(int timebase, uint8_t pattern , int pause, int repeats, int pin)
+    {
+      Timebase = timebase;
+      Pattern = pattern;
+      PauseBetweenPatterns = pause;
+      PatternRepeatLimit = repeats;
+      Pin = pin;
+      State = LOW;
+
+      PreviousMillis = 0;
+      CurrentMillis = 0;
+    }
+
+    void Stop()
+    {
+      State = LOW;
+    }
+
+    void Reset()
+    {
+      PreviousMillis = 0;
+      CurrentMillis = 0;
+      PatternRepeated = 0;
+      State = LOW;
+    }
+    
+    void Play()
+    {
+      CurrentMillis = millis();
+      if (PatternRepeated < PatternRepeatLimit)
+      {
+        if ((State == HIGH) && (CurrentMillis - PreviousMillis >= Timebase))
+        {
+          State = LOW;  // Turn it off
+          PreviousMillis = CurrentMillis;  // Remember the time
+          digitalWrite(Pin, State); // Update the actual buzzer
+          PatternRepeated ++;
+        }
+        else if ((State == LOW) && (CurrentMillis - PreviousMillis >= Timebase))
+        {
+          State = HIGH;  // turn it on
+          PreviousMillis = CurrentMillis;   // Remember the time
+          digitalWrite(Pin, State); // Update the actual buzzer
+        }
+      }
+    }
+};
+
+
 //buzzer Chime1 variables
 int buzzerChime1TimeBase = 100;
 String buzzerChime1Pattern = "|_||||_|";
@@ -70,7 +135,6 @@ class Timer
     int BuzzerRepeats;
     bool AutoRestart;
     uint8_t TypeMask;
-    uint8_t TypeMaskCache;
     Adafruit_7segment *LEDMatrix;
 
     int Time = Duration;
@@ -192,14 +256,16 @@ class Timer
           }
         }
       }
-      else // Switch buzzer off if timer is no longer fired
-      {
-        buzzerChime1PatternRepeated = 0;
-        buzzerChime1State = LOW;  // Turn it off
-        digitalWrite(buzzerPin, buzzerChime1State); // Update the actual buzzer
-      }
+//      else // Switch buzzer off if timer is no longer fired
+//      {
+//        buzzerChime1PatternRepeated = 0;
+//        buzzerChime1State = LOW;  // Turn it off
+//        digitalWrite(buzzerPin, buzzerChime1State); // Update the actual buzzer
+//      }
     }
 };
+
+Buzzer chime1(100, B11111111 , 2000, 6, buzzerPin);
 
 Timer t1(6, RESTART, false, B01110110, matrix, 3, 1);
 Timer t2(60, RESTART, false, B01110110, matrix, 3, 2);
@@ -227,8 +293,8 @@ void loop() {
 
   readInput();
 
-  // check to see if it's time to change the state of the LED
-  unsigned long currentMillis = millis();
+  chime1.Play();
+  
 
   switch (mode) {
     case 1:
