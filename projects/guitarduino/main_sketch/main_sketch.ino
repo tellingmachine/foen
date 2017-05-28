@@ -109,30 +109,43 @@ class Timer
 {
     // Class Member Variables
     // These are initialized at startup
-    int Duration;
+    unsigned long Duration; //seconds
     activeAction ActiveAction;
     bool AutoRestart;
     uint8_t TypeMask;
     Adafruit_7segment *LEDMatrix;
     Buzzer *Chime;
-
-    int Time = Duration;
-    long UpdateInterval = 10;
-
+    unsigned long MilliSecDuration;
+    unsigned long Time;
+    long UpdateInterval;
     // These maintain the current state
     timerState State;               // timer state
     int Mode;
     unsigned long PreviousMillis;   // will store last time the timer was updated
     unsigned long CurrentMillis;
 
-    int DisplayNumber;
+    unsigned long DisplayNumber;
 
     // Constructor - creates a Timer
     // and initializes the member variables and state
   public:
     Timer(int duration, activeAction action, bool autoRestart, uint8_t typeMask, Adafruit_7segment &ledmatrix, Buzzer &chime, int mode)
     {
-      Duration = duration;
+
+      //Max display is 99:59 = 100 * 60 -1 = 5999
+      if (duration > 5999)
+      {
+        Duration = 5999;
+      }
+      else if (duration < 0)
+      {
+        Duration = 0;
+      }
+      else
+      {
+        Duration = duration;
+      }
+
       ActiveAction = action;
       Chime = &chime;
       AutoRestart = autoRestart;
@@ -140,6 +153,10 @@ class Timer
       Mode = mode;
       LEDMatrix = &ledmatrix;
       State = READY;
+
+      MilliSecDuration = Duration * 1000;
+      Time = MilliSecDuration;
+      UpdateInterval = 10;
 
 
       PreviousMillis = 0;
@@ -153,10 +170,33 @@ class Timer
       State = state;
     }
 
-    void UpdateDisplay(int milliseconds, int count)
+    void UpdateDisplay(unsigned long milliseconds, int count)
     {
-      LEDMatrix->print(milliseconds);
-      LEDMatrix->writeDisplay();
+      unsigned long seconds = 0;
+      if (milliseconds < 60000) //Displays 00 Seconds and 00 Tenth and Hundredth of a Second
+      {
+        seconds = milliseconds / 1000;
+        unsigned long subseconds = (milliseconds % 1000);
+
+        LEDMatrix->writeDigitNum(0, seconds / 10);
+        LEDMatrix->writeDigitNum(1, seconds % 10);
+        LEDMatrix->writeDigitRaw(2, B00000010); //Colon 0x2
+        LEDMatrix->writeDigitNum(3, subseconds / 100);
+        LEDMatrix->writeDigitNum(4, subseconds % 100 / 10);
+        LEDMatrix->writeDisplay();
+      }
+      else if (milliseconds >= 60000) //Displays 00 Minutes and 00 Seconds
+      {
+        unsigned long minutes = milliseconds / 60000;
+        unsigned long subminute = milliseconds % 60000;
+        seconds = subminute / 1000;
+        LEDMatrix->writeDigitNum(0, minutes / 10);
+        LEDMatrix->writeDigitNum(1, minutes % 10);
+        LEDMatrix->writeDigitRaw(2, B00000010); //Colon 0x2
+        LEDMatrix->writeDigitNum(3, seconds / 10);
+        LEDMatrix->writeDigitNum(4, seconds % 10);
+        LEDMatrix->writeDisplay();
+      }
     }
 
     void SetReadyDisplay()
@@ -194,7 +234,7 @@ class Timer
       CurrentMillis = millis();
       if (State == READY)
       {
-        Time = Duration;
+        Time = MilliSecDuration;
         SetReadyDisplay();
       }
 
@@ -207,11 +247,11 @@ class Timer
 
           if (Time > 0)
           {
-            Time --;
+            Time = Time - 10;
           }
           else
           {
-            Time = Duration;
+            Time = MilliSecDuration;
             State = FIRED;
           }
           UpdateDisplay(DisplayNumber, 0);
@@ -234,6 +274,7 @@ Buzzer chime1(100, B11111111 , 2000, 6, buzzerPin);
 
 Timer t1(6, RESTART, false, B01110110, matrix, chime1, 1);
 Timer t2(60, RESTART, false, B01110110, matrix, chime1, 2);
+Timer t3(180, RESTART, false, B01110110, matrix, chime1, 3);
 
 void setup() {
 #ifndef __AVR_ATtiny85__
@@ -298,6 +339,26 @@ void loop() {
         actionExternalState = HIGH;
       }
       t2.Update();
+      break;
+    case 3:
+      if (backButtonState == LOW)
+      {
+        t3.SetState(READY);
+        backButtonState = HIGH;
+      }
+
+      if (actionButtonState == LOW)
+      {
+        t3.SetState(ACTIVE);
+        actionButtonState = HIGH;
+      }
+
+      if (actionExternalState == LOW)
+      {
+        t3.SetState(ACTIVE);
+        actionExternalState = HIGH;
+      }
+      t3.Update();
       break;
     default:
       // if nothing else matches, do the default
