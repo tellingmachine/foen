@@ -117,7 +117,7 @@ class Timer
     Buzzer *Chime;
 
     int Time = Duration;
-    long UpdateInterval = 1000;
+    long UpdateInterval = 10;
 
     // These maintain the current state
     timerState State;               // timer state
@@ -153,7 +153,13 @@ class Timer
       State = state;
     }
 
-    void UpdateDisplay()
+    void UpdateDisplay(int milliseconds, int count)
+    {
+      LEDMatrix->print(milliseconds);
+      LEDMatrix->writeDisplay();
+    }
+
+    void SetReadyDisplay()
     {
       LEDMatrix->writeDigitNum(0, Mode, false);
       LEDMatrix->writeDigitRaw(1, TypeMask);
@@ -189,7 +195,7 @@ class Timer
       if (State == READY)
       {
         Time = Duration;
-        UpdateDisplay();
+        SetReadyDisplay();
       }
 
       if (State == ACTIVE)
@@ -208,9 +214,7 @@ class Timer
             Time = Duration;
             State = FIRED;
           }
-          LEDMatrix->print(DisplayNumber);
-          LEDMatrix->writeDisplay();
-
+          UpdateDisplay(DisplayNumber, 0);
         }
       }
 
