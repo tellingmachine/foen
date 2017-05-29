@@ -298,11 +298,13 @@ class Timer
     }
 };
 
-Buzzer chime1(200, B10101010, 2000, 6, buzzerPin);
+Buzzer chime1(100, B10101010, 500, 2, buzzerPin);
+Buzzer chime2(200, B11101010, 1000, 3, buzzerPin);
+Buzzer chime3(200, B11110010, 2000, 6, buzzerPin);
 
 Timer t1(6, RESTART, false, B01110110, matrix, chime1, 1);
-Timer t2(60, RESTART, false, B01110110, matrix, chime1, 2);
-Timer t3(180, RESTART, false, B01110110, matrix, chime1, 3);
+Timer t2(60, RESTART, false, B01110110, matrix, chime2, 2);
+Timer t3(180, RESTART, false, B01110110, matrix, chime3, 3);
 
 void setup() {
 #ifndef __AVR_ATtiny85__
