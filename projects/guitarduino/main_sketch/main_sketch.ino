@@ -50,12 +50,14 @@ class Buzzer
     int Timebase;
     uint8_t Pattern = B11111111;
     int PauseBetweenPatterns = 2000;
-    int State = LOW;
+    int BuzzerState = LOW;
+    int MaskShiftCounter = 0;
     int PatternRepeatLimit = 3;
     int PatternRepeated = 0;
     int Pin;
     unsigned long PreviousMillis;   // will store last time the timer was updated
     unsigned long CurrentMillis;
+    uint8_t CurrentMask = B10000000;
 
     // Constructor - creates a Timer
     // and initializes the member variables and state
@@ -67,7 +69,8 @@ class Buzzer
       PauseBetweenPatterns = pause;
       PatternRepeatLimit = repeats;
       Pin = pin;
-      State = LOW;
+      BuzzerState = LOW;
+      MaskShiftCounter = 0;
 
       PreviousMillis = 0;
       CurrentMillis = 0;
@@ -78,8 +81,10 @@ class Buzzer
       PreviousMillis = 0;
       CurrentMillis = 0;
       PatternRepeated = 0;
-      State = LOW;
-      digitalWrite(Pin, State); // Update the actual buzzer
+      MaskShiftCounter = 0;
+      BuzzerState = LOW;
+      CurrentMask= B10000000;
+      digitalWrite(Pin, BuzzerState); // Update the actual buzzer
     }
 
     void Play()
@@ -87,19 +92,45 @@ class Buzzer
       CurrentMillis = millis();
       if (PatternRepeated < PatternRepeatLimit)
       {
-        if ((State == HIGH) && (CurrentMillis - PreviousMillis >= Timebase))
+        if (MaskShiftCounter < 8 && (CurrentMillis - PreviousMillis >= Timebase))
         {
-          State = LOW;  // Turn it off
+          if (Pattern & CurrentMask)
+          {
+            BuzzerState = HIGH;
+            Serial.print(1);
+          }
+          else
+          {
+            Serial.print(0);
+            BuzzerState = LOW;
+          }
           PreviousMillis = CurrentMillis;  // Remember the time
-          digitalWrite(Pin, State); // Update the actual buzzer
-          PatternRepeated ++;
+          digitalWrite(Pin, BuzzerState); // Update the actual buzzer
+          MaskShiftCounter++;
+          CurrentMask >>= 1;
         }
-        else if ((State == LOW) && (CurrentMillis - PreviousMillis >= Timebase))
+
+        if(MaskShiftCounter == 8 && (CurrentMillis - PreviousMillis >= Timebase))
         {
-          State = HIGH;  // turn it on
-          PreviousMillis = CurrentMillis;   // Remember the time
-          digitalWrite(Pin, State); // Update the actual buzzer
+          BuzzerState = LOW;
+          digitalWrite(Pin, BuzzerState);
         }
+
+        
+        if ((MaskShiftCounter == 8) && (CurrentMillis - PreviousMillis >= PauseBetweenPatterns))
+        {
+          PreviousMillis = CurrentMillis;   // Remember the time
+          CurrentMask = B10000000;
+          MaskShiftCounter = 0;
+          PatternRepeated ++;
+          Serial.println();
+        }
+      }
+      else
+      {
+        //Pattern was repeated often enough
+        BuzzerState = LOW;
+        digitalWrite(Pin, BuzzerState);
       }
     }
 };
@@ -226,7 +257,6 @@ class Timer
       }
 
       LEDMatrix->writeDisplay();
-
     }
 
     void Update()
@@ -257,8 +287,6 @@ class Timer
           UpdateDisplay(DisplayNumber, 0);
         }
       }
-
-
       if (State == FIRED)
       {
         Chime->Play();
@@ -270,7 +298,7 @@ class Timer
     }
 };
 
-Buzzer chime1(100, B11111111 , 2000, 6, buzzerPin);
+Buzzer chime1(200, B10101010, 2000, 6, buzzerPin);
 
 Timer t1(6, RESTART, false, B01110110, matrix, chime1, 1);
 Timer t2(60, RESTART, false, B01110110, matrix, chime1, 2);
