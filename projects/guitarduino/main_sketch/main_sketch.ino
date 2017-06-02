@@ -36,8 +36,8 @@ int mode = 1;
 //DisplayCodes
 //1U:1.0    CHORDS    'U'ht, timer 60s countdown time
 //2U:3.0    PLANKS    'U'hr, timer counting down 3 minutes
-//3U:10     PIZZA     'U'hr, timer counting down 10 minutes
-//4U:20     MAXBED    'U'hr, timer counting down 20 minutes
+//3U:10     PASTA     'U'hr, timer counting down 10 minutes
+//4U:20     MAX       'U'hr, timer counting down 20 minutes
 //5U:60     POOL      'U'hr, timer counting down 60 minutes
 //6S:0.0    STOP      'S'top Uhr, works like a stop watch. Displaying seconds and 100th of seconds 0 - 59.99 seconds and then minutes and seconds 1:00 - 99:59 min
 //7S:1.5    KUMITE    'S'top Uhr, works like a stop watch for Kumite matches. Counts down time from 01:30 min to 00:00 and allows pause resume. Alarm when last 30 seconds start
