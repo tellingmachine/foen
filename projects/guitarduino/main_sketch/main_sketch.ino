@@ -33,16 +33,15 @@ int actionExternalState = 0;
 int rotarySelStates[ ] = {0, 0, 0, 0, 0, 0, 0, 0};
 int mode = 1;
 
-
 //DisplayCodes
-//1H:1.0 'H'ybrid counter and timer 60s countdown time and counts button contacts
-//2U:15  'U'hr, timer counting down 15 minutes
-//3U:60  'U'hr, timer counting down 60 minutes
-//4S:0.0 'S'top Uhr, works like a stop watch. Displaying seconds and 100th of seconds 0 - 59.99 seconds and then minutes and seconds 1:00 - 99:59 min
-//5S:1.5 'S'top Uhr, works like a stop watch for Kumite matches. Counts down time from 01:30 min to 00:00 and allows pause resume
-//6S:2.0 'S'top Uhr, works like a stop watch for Kumite matches. Counts down time from 02:00 min to 00:00 and allows pause resume
-//7C:00  'C'ounter. Counts from 0 to 9999
-//8P:--  'P'rogramming... might be obsolete could be replaced by a U:3.0 or become a programmable timer
+//1U:1.0    CHORDS    'U'ht, timer 60s countdown time
+//2U:3.0    PLANKS    'U'hr, timer counting down 3 minutes
+//3U:10     PIZZA     'U'hr, timer counting down 10 minutes
+//4U:20     MAXBED    'U'hr, timer counting down 20 minutes
+//5U:60     POOL      'U'hr, timer counting down 60 minutes
+//6S:0.0    STOP      'S'top Uhr, works like a stop watch. Displaying seconds and 100th of seconds 0 - 59.99 seconds and then minutes and seconds 1:00 - 99:59 min
+//7S:1.5    KUMITE    'S'top Uhr, works like a stop watch for Kumite matches. Counts down time from 01:30 min to 00:00 and allows pause resume. Alarm when last 30 seconds start
+//8C:00     DOZENS    'C'ounter. Counts from 0 to 99*12
 
 class Buzzer
 {
@@ -83,7 +82,7 @@ class Buzzer
       PatternRepeated = 0;
       MaskShiftCounter = 0;
       BuzzerState = LOW;
-      CurrentMask= B10000000;
+      CurrentMask = B10000000;
       digitalWrite(Pin, BuzzerState); // Update the actual buzzer
     }
 
@@ -110,13 +109,13 @@ class Buzzer
           CurrentMask >>= 1;
         }
 
-        if(MaskShiftCounter == 8 && (CurrentMillis - PreviousMillis >= Timebase))
+        if (MaskShiftCounter == 8 && (CurrentMillis - PreviousMillis >= Timebase))
         {
           BuzzerState = LOW;
           digitalWrite(Pin, BuzzerState);
         }
 
-        
+
         if ((MaskShiftCounter == 8) && (CurrentMillis - PreviousMillis >= PauseBetweenPatterns))
         {
           PreviousMillis = CurrentMillis;   // Remember the time
@@ -300,11 +299,13 @@ class Timer
 
 Buzzer chime1(100, B10101010, 500, 2, buzzerPin);
 Buzzer chime2(200, B11101010, 1000, 3, buzzerPin);
-Buzzer chime3(200, B11110010, 2000, 6, buzzerPin);
+Buzzer chime3(200, B11110010, 2000, 60, buzzerPin);
 
-Timer t1(6, RESTART, false, B01110110, matrix, chime1, 1);
-Timer t2(60, RESTART, false, B01110110, matrix, chime2, 2);
-Timer t3(180, RESTART, false, B01110110, matrix, chime3, 3);
+Timer t1(60, RESTART, false, B00111110, matrix, chime1, 1);
+Timer t2(180, RESTART, false, B00111110, matrix, chime2, 2);
+Timer t3(600, RESTART, false, B00111110, matrix, chime3, 3);
+Timer t4(1200, RESTART, false, B00111110, matrix, chime3, 4);
+Timer t5(3600, RESTART, false, B00111110, matrix, chime3, 5);
 
 void setup() {
 #ifndef __AVR_ATtiny85__
@@ -389,6 +390,46 @@ void loop() {
         actionExternalState = HIGH;
       }
       t3.Update();
+      break;
+    case 4:
+      if (backButtonState == LOW)
+      {
+        t4.SetState(READY);
+        backButtonState = HIGH;
+      }
+
+      if (actionButtonState == LOW)
+      {
+        t4.SetState(ACTIVE);
+        actionButtonState = HIGH;
+      }
+
+      if (actionExternalState == LOW)
+      {
+        t4.SetState(ACTIVE);
+        actionExternalState = HIGH;
+      }
+      t4.Update();
+      break;
+    case 5:
+      if (backButtonState == LOW)
+      {
+        t5.SetState(READY);
+        backButtonState = HIGH;
+      }
+
+      if (actionButtonState == LOW)
+      {
+        t5.SetState(ACTIVE);
+        actionButtonState = HIGH;
+      }
+
+      if (actionExternalState == LOW)
+      {
+        t5.SetState(ACTIVE);
+        actionExternalState = HIGH;
+      }
+      t5.Update();
       break;
     default:
       // if nothing else matches, do the default
