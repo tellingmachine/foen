@@ -2,6 +2,13 @@
 #include <Adafruit_GFX.h>
 #include "Adafruit_LEDBackpack.h"
 
+//Create Libraries
+//#include buzzer.h
+//#include timer.h
+//#include stopwatch.h
+//#include counter.h
+
+
 //7-Segment LED Raw Bit Drawing
 //    A
 // F     B
@@ -12,7 +19,8 @@
 //Bit Mask:  B11111111
 // H:        B01110110
 // U:        B00111110
-// S:        B01101101
+// S:        B01101101 (Looks like a 5)
+// SW:       B01001001 (3 Horizontal Lines)
 // C:        B00111001
 
 enum timerState {NONE, READY, ACTIVE, PAUSED, FIRED};
@@ -34,7 +42,7 @@ int rotarySelStates[ ] = {0, 0, 0, 0, 0, 0, 0, 0};
 int mode = 1;
 
 //DisplayCodes
-//1U:1.0    CHORDS    'U'ht, timer 60s countdown time
+//1U:1.0    CHORDS    'U'hr, timer 60s countdown time (will be a 'H'ybrid timer and counter soon)
 //2U:3.0    PLANKS    'U'hr, timer counting down 3 minutes
 //3U:10     PASTA     'U'hr, timer counting down 10 minutes
 //4U:20     MAX       'U'hr, timer counting down 20 minutes
@@ -297,15 +305,345 @@ class Timer
     }
 };
 
+class Counter
+{
+    // Class Member Variables
+    // These are initialized at startup
+    unsigned long Duration; //seconds
+    activeAction ActiveAction;
+    bool AutoRestart;
+    uint8_t TypeMask;
+    Adafruit_7segment *LEDMatrix;
+    Buzzer *Chime;
+    unsigned long MilliSecDuration;
+    unsigned long Time;
+    long UpdateInterval;
+    // These maintain the current state
+    timerState State;               // timer state
+    int Mode;
+    unsigned long PreviousMillis;   // will store last time the timer was updated
+    unsigned long CurrentMillis;
+
+    unsigned long DisplayNumber;
+
+    // Constructor - creates a Timer
+    // and initializes the member variables and state
+  public:
+    Counter(int duration, activeAction action, bool autoRestart, uint8_t typeMask, Adafruit_7segment &ledmatrix, Buzzer &chime, int mode)
+    {
+
+      //Max display is 99:59 = 100 * 60 -1 = 5999
+      if (duration > 5999)
+      {
+        Duration = 5999;
+      }
+      else if (duration < 0)
+      {
+        Duration = 0;
+      }
+      else
+      {
+        Duration = duration;
+      }
+
+      ActiveAction = action;
+      Chime = &chime;
+      AutoRestart = autoRestart;
+      TypeMask = typeMask;
+      Mode = mode;
+      LEDMatrix = &ledmatrix;
+      State = READY;
+
+      MilliSecDuration = Duration * 1000;
+      Time = MilliSecDuration;
+      UpdateInterval = 10;
+
+
+      PreviousMillis = 0;
+      CurrentMillis = 0;
+
+      DisplayNumber = 0;
+    }
+
+    void SetState(timerState state)
+    {
+      State = state;
+    }
+
+    void UpdateDisplay(unsigned long milliseconds, int count)
+    {
+      unsigned long seconds = 0;
+      if (milliseconds < 60000) //Displays 00 Seconds and 00 Tenth and Hundredth of a Second
+      {
+        seconds = milliseconds / 1000;
+        unsigned long subseconds = (milliseconds % 1000);
+
+        LEDMatrix->writeDigitNum(0, seconds / 10);
+        LEDMatrix->writeDigitNum(1, seconds % 10);
+        LEDMatrix->writeDigitRaw(2, B00000010); //Colon 0x2
+        LEDMatrix->writeDigitNum(3, subseconds / 100);
+        LEDMatrix->writeDigitNum(4, subseconds % 100 / 10);
+        LEDMatrix->writeDisplay();
+      }
+      else if (milliseconds >= 60000) //Displays 00 Minutes and 00 Seconds
+      {
+        unsigned long minutes = milliseconds / 60000;
+        unsigned long subminute = milliseconds % 60000;
+        seconds = subminute / 1000;
+        LEDMatrix->writeDigitNum(0, minutes / 10);
+        LEDMatrix->writeDigitNum(1, minutes % 10);
+        LEDMatrix->writeDigitRaw(2, B00000010); //Colon 0x2
+        LEDMatrix->writeDigitNum(3, seconds / 10);
+        LEDMatrix->writeDigitNum(4, seconds % 10);
+        LEDMatrix->writeDisplay();
+      }
+    }
+
+    void SetReadyDisplay()
+    {
+      LEDMatrix->writeDigitNum(0, Mode, false);
+      LEDMatrix->writeDigitRaw(1, TypeMask);
+      LEDMatrix->writeDigitRaw(2, B00000010); //Colon 0x2
+
+      int minutes = Duration / 60;
+      int tenthMinute = (Duration % 60) / 6;
+
+      if (minutes > 9 && minutes < 100)
+      {
+        LEDMatrix->writeDigitNum(3, minutes / 10, false);
+        LEDMatrix->writeDigitNum(4, minutes % 10, false);
+      }
+      else if (minutes > 99)
+      {
+        minutes = 99;
+        LEDMatrix->writeDigitNum(3, minutes / 10, false);
+        LEDMatrix->writeDigitNum(4, minutes % 10, false);
+      }
+      else if (minutes < 10)
+      {
+        LEDMatrix->writeDigitNum(3, minutes, true);
+        LEDMatrix->writeDigitNum(4, tenthMinute % 10, false);
+      }
+
+      LEDMatrix->writeDisplay();
+    }
+
+    void Update()
+    {
+      CurrentMillis = millis();
+      if (State == READY)
+      {
+        Time = MilliSecDuration;
+        SetReadyDisplay();
+      }
+
+      if (State == ACTIVE)
+      {
+        if (CurrentMillis - PreviousMillis >= UpdateInterval)
+        {
+          PreviousMillis = CurrentMillis;
+          DisplayNumber = Time;
+
+          if (Time > 0)
+          {
+            Time = Time - 10;
+          }
+          else
+          {
+            Time = MilliSecDuration;
+            State = FIRED;
+          }
+          UpdateDisplay(DisplayNumber, 0);
+        }
+      }
+      if (State == FIRED)
+      {
+        Chime->Play();
+      }
+      else
+      {
+        Chime->Reset();
+      }
+    }
+};
+
+class Stopwatch
+{
+    // Class Member Variables
+    // These are initialized at startup
+    unsigned long Duration; //seconds
+    activeAction ActiveAction;
+    bool AutoRestart;
+    uint8_t TypeMask;
+    Adafruit_7segment *LEDMatrix;
+    Buzzer *Chime;
+    unsigned long MilliSecDuration;
+    unsigned long Time;
+    long UpdateInterval;
+    // These maintain the current state
+    timerState State;               // timer state
+    int Mode;
+    unsigned long PreviousMillis;   // will store last time the timer was updated
+    unsigned long CurrentMillis;
+
+    unsigned long DisplayNumber;
+
+    // Constructor - creates a Timer
+    // and initializes the member variables and state
+  public:
+    Stopwatch(int duration, activeAction action, bool autoRestart, uint8_t typeMask, Adafruit_7segment &ledmatrix, Buzzer &chime, int mode)
+    {
+
+      //Max display is 99:59 = 100 * 60 -1 = 5999
+      if (duration > 5999)
+      {
+        Duration = 5999;
+      }
+      else if (duration < 0)
+      {
+        Duration = 0;
+      }
+      else
+      {
+        Duration = duration;
+      }
+
+      ActiveAction = action;
+      Chime = &chime;
+      AutoRestart = autoRestart;
+      TypeMask = typeMask;
+      Mode = mode;
+      LEDMatrix = &ledmatrix;
+      State = READY;
+
+      MilliSecDuration = Duration * 1000;
+      Time = MilliSecDuration;
+      UpdateInterval = 10;
+
+
+      PreviousMillis = 0;
+      CurrentMillis = 0;
+
+      DisplayNumber = 0;
+    }
+
+    void SetState(timerState state)
+    {
+      State = state;
+    }
+
+    void UpdateDisplay(unsigned long milliseconds, int count)
+    {
+      unsigned long seconds = 0;
+      if (milliseconds < 60000) //Displays 00 Seconds and 00 Tenth and Hundredth of a Second
+      {
+        seconds = milliseconds / 1000;
+        unsigned long subseconds = (milliseconds % 1000);
+
+        LEDMatrix->writeDigitNum(0, seconds / 10);
+        LEDMatrix->writeDigitNum(1, seconds % 10);
+        LEDMatrix->writeDigitRaw(2, B00000010); //Colon 0x2
+        LEDMatrix->writeDigitNum(3, subseconds / 100);
+        LEDMatrix->writeDigitNum(4, subseconds % 100 / 10);
+        LEDMatrix->writeDisplay();
+      }
+      else if (milliseconds >= 60000) //Displays 00 Minutes and 00 Seconds
+      {
+        unsigned long minutes = milliseconds / 60000;
+        unsigned long subminute = milliseconds % 60000;
+        seconds = subminute / 1000;
+        LEDMatrix->writeDigitNum(0, minutes / 10);
+        LEDMatrix->writeDigitNum(1, minutes % 10);
+        LEDMatrix->writeDigitRaw(2, B00000010); //Colon 0x2
+        LEDMatrix->writeDigitNum(3, seconds / 10);
+        LEDMatrix->writeDigitNum(4, seconds % 10);
+        LEDMatrix->writeDisplay();
+      }
+    }
+
+    void SetReadyDisplay()
+    {
+      LEDMatrix->writeDigitNum(0, Mode, false);
+      LEDMatrix->writeDigitRaw(1, TypeMask);
+      LEDMatrix->writeDigitRaw(2, B00000010); //Colon 0x2
+
+      int minutes = Duration / 60;
+      int tenthMinute = (Duration % 60) / 6;
+
+      if (minutes > 9 && minutes < 100)
+      {
+        LEDMatrix->writeDigitNum(3, minutes / 10, false);
+        LEDMatrix->writeDigitNum(4, minutes % 10, false);
+      }
+      else if (minutes > 99)
+      {
+        minutes = 99;
+        LEDMatrix->writeDigitNum(3, minutes / 10, false);
+        LEDMatrix->writeDigitNum(4, minutes % 10, false);
+      }
+      else if (minutes < 10)
+      {
+        LEDMatrix->writeDigitNum(3, minutes, true);
+        LEDMatrix->writeDigitNum(4, tenthMinute % 10, false);
+      }
+
+      LEDMatrix->writeDisplay();
+    }
+
+    void Update()
+    {
+      CurrentMillis = millis();
+      if (State == READY)
+      {
+        Time = MilliSecDuration;
+        SetReadyDisplay();
+      }
+
+      if (State == ACTIVE)
+      {
+        if (CurrentMillis - PreviousMillis >= UpdateInterval)
+        {
+          PreviousMillis = CurrentMillis;
+          DisplayNumber = Time;
+
+          if (Time > 0)
+          {
+            Time = Time - 10;
+          }
+          else
+          {
+            Time = MilliSecDuration;
+            State = FIRED;
+          }
+          UpdateDisplay(DisplayNumber, 0);
+        }
+      }
+      if (State == FIRED)
+      {
+        Chime->Play();
+      }
+      else
+      {
+        Chime->Reset();
+      }
+    }
+};
+
+
+
 Buzzer chime1(100, B10101010, 500, 2, buzzerPin);
 Buzzer chime2(200, B11101010, 1000, 3, buzzerPin);
 Buzzer chime3(200, B11110010, 2000, 60, buzzerPin);
+Buzzer chime4(50, B1111000, 10, 1, buzzerPin);
 
-Timer t1(60, RESTART, false, B00111110, matrix, chime1, 1);
+Timer t1(60, RESTART, false, B01110110, matrix, chime1, 1);
 Timer t2(180, RESTART, false, B00111110, matrix, chime2, 2);
 Timer t3(600, RESTART, false, B00111110, matrix, chime3, 3);
 Timer t4(1200, RESTART, false, B00111110, matrix, chime3, 4);
 Timer t5(3600, RESTART, false, B00111110, matrix, chime3, 5);
+Stopwatch sw6(0, RESTART, false, B01001001, matrix, chime1, 6);
+Stopwatch sw7(90, RESTART, false, B01001001, matrix, chime1, 7);
+Counter c8(0, RESTART, false, B00111001, matrix, chime4, 8);
 
 void setup() {
 #ifndef __AVR_ATtiny85__
@@ -430,6 +768,66 @@ void loop() {
         actionExternalState = HIGH;
       }
       t5.Update();
+      break;
+    case 6:
+      if (backButtonState == LOW)
+      {
+        sw6.SetState(READY);
+        backButtonState = HIGH;
+      }
+
+      if (actionButtonState == LOW)
+      {
+        sw6.SetState(ACTIVE);
+        actionButtonState = HIGH;
+      }
+
+      if (actionExternalState == LOW)
+      {
+        sw6.SetState(ACTIVE);
+        actionExternalState = HIGH;
+      }
+      sw6.Update();
+      break;
+    case 7:
+      if (backButtonState == LOW)
+      {
+        sw7.SetState(READY);
+        backButtonState = HIGH;
+      }
+
+      if (actionButtonState == LOW)
+      {
+        sw7.SetState(ACTIVE);
+        actionButtonState = HIGH;
+      }
+
+      if (actionExternalState == LOW)
+      {
+        sw7.SetState(ACTIVE);
+        actionExternalState = HIGH;
+      }
+      sw7.Update();
+      break;
+    case 8:
+      if (backButtonState == LOW)
+      {
+        c8.SetState(READY);
+        backButtonState = HIGH;
+      }
+
+      if (actionButtonState == LOW)
+      {
+        c8.SetState(ACTIVE);
+        actionButtonState = HIGH;
+      }
+
+      if (actionExternalState == LOW)
+      {
+        c8.SetState(ACTIVE);
+        actionExternalState = HIGH;
+      }
+      c8.Update();
       break;
     default:
       // if nothing else matches, do the default
