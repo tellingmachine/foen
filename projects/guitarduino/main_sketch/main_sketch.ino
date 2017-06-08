@@ -309,15 +309,18 @@ class Counter
 {
     // Class Member Variables
     // These are initialized at startup
-    unsigned long Duration; //seconds
+    long CountLimit;
+    long ActiveCountLimit;
     activeAction ActiveAction;
     bool AutoRestart;
+    bool CountUpDown;
     uint8_t TypeMask;
     Adafruit_7segment *LEDMatrix;
     Buzzer *Chime;
-    unsigned long MilliSecDuration;
-    unsigned long Time;
+    long Count;
     long UpdateInterval;
+    long CountIncrement;
+    long ActiveCountIncrement;
     // These maintain the current state
     timerState State;               // timer state
     int Mode;
@@ -329,35 +332,62 @@ class Counter
     // Constructor - creates a Timer
     // and initializes the member variables and state
   public:
-    Counter(int duration, activeAction action, bool autoRestart, uint8_t typeMask, Adafruit_7segment &ledmatrix, Buzzer &chime, int mode)
+    Counter(long countLimit, long countIncrement, activeAction action, bool autoRestart, bool countupdown, uint8_t typeMask, Adafruit_7segment &ledmatrix, Buzzer &chime, int mode)
     {
 
-      //Max display is 99:59 = 100 * 60 -1 = 5999
-      if (duration > 5999)
+      //Max display is 9999
+      if (countLimit > 9999)
       {
-        Duration = 5999;
+        CountLimit = 9999;
       }
-      else if (duration < 0)
+      else if (countLimit < 0)
       {
-        Duration = 0;
+        CountLimit = 0;
       }
       else
       {
-        Duration = duration;
+        CountLimit = countLimit;
+      }
+
+      if (countIncrement > 9999)
+      {
+        CountIncrement = 9999;
+      }
+      else if (countIncrement < -9999)
+      {
+        CountIncrement = - 9999;
+      }
+      else if (countIncrement == 0)
+      {
+        CountIncrement = 1;
+      }
+      else
+      {
+        CountIncrement = countIncrement;
+      }
+
+      if (countupdown == true)
+      {
+        ActiveCountLimit = CountLimit;
+        Count = 0;
+        ActiveCountIncrement = CountIncrement;
+      }
+      else
+      {
+        ActiveCountLimit = 0;
+        Count = CountLimit;
+        ActiveCountIncrement = - CountIncrement;
       }
 
       ActiveAction = action;
       Chime = &chime;
       AutoRestart = autoRestart;
+      CountUpDown = countupdown;
       TypeMask = typeMask;
       Mode = mode;
       LEDMatrix = &ledmatrix;
       State = READY;
-
-      MilliSecDuration = Duration * 1000;
-      Time = MilliSecDuration;
       UpdateInterval = 10;
-
 
       PreviousMillis = 0;
       CurrentMillis = 0;
@@ -370,33 +400,14 @@ class Counter
       State = state;
     }
 
-    void UpdateDisplay(unsigned long milliseconds, int count)
+    void UpdateDisplay(unsigned long count)
     {
-      unsigned long seconds = 0;
-      if (milliseconds < 60000) //Displays 00 Seconds and 00 Tenth and Hundredth of a Second
-      {
-        seconds = milliseconds / 1000;
-        unsigned long subseconds = (milliseconds % 1000);
-
-        LEDMatrix->writeDigitNum(0, seconds / 10);
-        LEDMatrix->writeDigitNum(1, seconds % 10);
-        LEDMatrix->writeDigitRaw(2, B00000010); //Colon 0x2
-        LEDMatrix->writeDigitNum(3, subseconds / 100);
-        LEDMatrix->writeDigitNum(4, subseconds % 100 / 10);
-        LEDMatrix->writeDisplay();
-      }
-      else if (milliseconds >= 60000) //Displays 00 Minutes and 00 Seconds
-      {
-        unsigned long minutes = milliseconds / 60000;
-        unsigned long subminute = milliseconds % 60000;
-        seconds = subminute / 1000;
-        LEDMatrix->writeDigitNum(0, minutes / 10);
-        LEDMatrix->writeDigitNum(1, minutes % 10);
-        LEDMatrix->writeDigitRaw(2, B00000010); //Colon 0x2
-        LEDMatrix->writeDigitNum(3, seconds / 10);
-        LEDMatrix->writeDigitNum(4, seconds % 10);
-        LEDMatrix->writeDisplay();
-      }
+      LEDMatrix->writeDigitNum(0, 0);
+      LEDMatrix->writeDigitNum(1, 0);
+      LEDMatrix->writeDigitRaw(2, B00000010); //Colon 0x2
+      LEDMatrix->writeDigitNum(3, count / 10);
+      LEDMatrix->writeDigitNum(4, count % 10);
+      LEDMatrix->writeDisplay();
     }
 
     void SetReadyDisplay()
@@ -405,26 +416,21 @@ class Counter
       LEDMatrix->writeDigitRaw(1, TypeMask);
       LEDMatrix->writeDigitRaw(2, B00000010); //Colon 0x2
 
-      int minutes = Duration / 60;
-      int tenthMinute = (Duration % 60) / 6;
-
-      if (minutes > 9 && minutes < 100)
+      int tens = 0;
+      int singles = 0;
+      if (CountLimit < 99)
       {
-        LEDMatrix->writeDigitNum(3, minutes / 10, false);
-        LEDMatrix->writeDigitNum(4, minutes % 10, false);
+        tens = CountLimit / 10;
+        singles = (CountLimit % 10);
       }
-      else if (minutes > 99)
+      else
       {
-        minutes = 99;
-        LEDMatrix->writeDigitNum(3, minutes / 10, false);
-        LEDMatrix->writeDigitNum(4, minutes % 10, false);
-      }
-      else if (minutes < 10)
-      {
-        LEDMatrix->writeDigitNum(3, minutes, true);
-        LEDMatrix->writeDigitNum(4, tenthMinute % 10, false);
+        tens = 0;
+        singles = 0;
       }
 
+      LEDMatrix->writeDigitNum(3, tens, false);
+      LEDMatrix->writeDigitNum(4, singles, false);
       LEDMatrix->writeDisplay();
     }
 
@@ -433,27 +439,31 @@ class Counter
       CurrentMillis = millis();
       if (State == READY)
       {
-        Time = MilliSecDuration;
+        if (CountUpDown == true)
+        {
+          ActiveCountLimit = CountLimit;
+          Count = 0;
+          ActiveCountIncrement = CountIncrement;
+        }
+        else
+        {
+          ActiveCountLimit = 0;
+          Count = CountLimit;
+          ActiveCountIncrement = - CountIncrement;
+        }
         SetReadyDisplay();
       }
 
       if (State == ACTIVE)
       {
+
         if (CurrentMillis - PreviousMillis >= UpdateInterval)
         {
           PreviousMillis = CurrentMillis;
-          DisplayNumber = Time;
-
-          if (Time > 0)
-          {
-            Time = Time - 10;
-          }
-          else
-          {
-            Time = MilliSecDuration;
-            State = FIRED;
-          }
-          UpdateDisplay(DisplayNumber, 0);
+          Count = Count + ActiveCountIncrement;
+          DisplayNumber = Count;
+          UpdateDisplay(DisplayNumber);
+          State = PAUSED;
         }
       }
       if (State == FIRED)
@@ -643,7 +653,7 @@ Timer t4(1200, RESTART, false, B00111110, matrix, chime3, 4);
 Timer t5(3600, RESTART, false, B00111110, matrix, chime3, 5);
 Stopwatch sw6(0, RESTART, false, B01001001, matrix, chime1, 6);
 Stopwatch sw7(90, RESTART, false, B01001001, matrix, chime1, 7);
-Counter c8(0, RESTART, false, B00111001, matrix, chime4, 8);
+Counter c8(12, 1, RESTART, false, true, B00111001, matrix, chime4, 8);
 
 void setup() {
 #ifndef __AVR_ATtiny85__
@@ -828,6 +838,7 @@ void loop() {
         actionExternalState = HIGH;
       }
       c8.Update();
+
       break;
     default:
       // if nothing else matches, do the default
