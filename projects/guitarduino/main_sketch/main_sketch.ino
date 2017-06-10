@@ -323,6 +323,7 @@ class Counter
     long ActiveCountIncrement;
     // These maintain the current state
     timerState State;               // timer state
+    timerState PreviousState;
     int Mode;
     unsigned long PreviousMillis;   // will store last time the timer was updated
     unsigned long CurrentMillis;
@@ -387,7 +388,8 @@ class Counter
       Mode = mode;
       LEDMatrix = &ledmatrix;
       State = READY;
-      UpdateInterval = 10;
+      PreviousState = NONE;
+      UpdateInterval = 1000;
 
       PreviousMillis = 0;
       CurrentMillis = 0;
@@ -398,6 +400,12 @@ class Counter
     void SetState(timerState state)
     {
       State = state;
+      if (State == ACTIVE && ActiveAction == COUNT && PreviousState != ACTIVE)
+      {
+        CountOnce();
+      }
+      PreviousState = State;
+
     }
 
     void UpdateDisplay(unsigned long count)
@@ -434,6 +442,11 @@ class Counter
       LEDMatrix->writeDisplay();
     }
 
+    void CountOnce()
+    {
+      Count = Count + ActiveCountIncrement;
+    }
+
     void Update()
     {
       CurrentMillis = millis();
@@ -456,16 +469,10 @@ class Counter
 
       if (State == ACTIVE)
       {
-
-        if (CurrentMillis - PreviousMillis >= UpdateInterval)
-        {
-          PreviousMillis = CurrentMillis;
-          Count = Count + ActiveCountIncrement;
-          DisplayNumber = Count;
-          UpdateDisplay(DisplayNumber);
-          State = PAUSED;
-        }
+        DisplayNumber = Count;
+        UpdateDisplay(DisplayNumber);
       }
+      
       if (State == FIRED)
       {
         Chime->Play();
@@ -653,7 +660,7 @@ Timer t4(1200, RESTART, false, B00111110, matrix, chime3, 4);
 Timer t5(3600, RESTART, false, B00111110, matrix, chime3, 5);
 Stopwatch sw6(0, RESTART, false, B01001001, matrix, chime1, 6);
 Stopwatch sw7(90, RESTART, false, B01001001, matrix, chime1, 7);
-Counter c8(12, 1, RESTART, false, true, B00111001, matrix, chime4, 8);
+Counter c8(12, 1, COUNT, false, true, B00111001, matrix, chime4, 8);
 
 void setup() {
 #ifndef __AVR_ATtiny85__
@@ -820,23 +827,20 @@ void loop() {
       sw7.Update();
       break;
     case 8:
+
       if (backButtonState == LOW)
       {
         c8.SetState(READY);
-        backButtonState = HIGH;
       }
-
-      if (actionButtonState == LOW)
+      else if ((actionButtonState == LOW || actionExternalState == LOW) && backButtonState == HIGH)
       {
         c8.SetState(ACTIVE);
-        actionButtonState = HIGH;
+      }
+      else if (actionButtonState == HIGH && actionExternalState == HIGH && backButtonState == HIGH)
+      {
+        c8.SetState(NONE);
       }
 
-      if (actionExternalState == LOW)
-      {
-        c8.SetState(ACTIVE);
-        actionExternalState = HIGH;
-      }
       c8.Update();
 
       break;
