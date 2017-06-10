@@ -23,7 +23,7 @@
 // SW:       B01001001 (3 Horizontal Lines)
 // C:        B00111001
 
-enum timerState {NONE, READY, ACTIVE, PAUSED, FIRED};
+enum timerState {NONE, READY, ACTIVE, PAUSED, DONE, INACTIVE};
 enum activeAction {RESTART, PAUSE, RESUME, COUNT};
 
 //Display variables
@@ -289,12 +289,12 @@ class Timer
           else
           {
             Time = MilliSecDuration;
-            State = FIRED;
+            State = DONE;
           }
           UpdateDisplay(DisplayNumber, 0);
         }
       }
-      if (State == FIRED)
+      if (State == DONE)
       {
         Chime->Play();
       }
@@ -407,6 +407,10 @@ class Counter
       PreviousState = State;
 
     }
+    timerState GetState()
+    {
+      return State;
+    }
 
     void UpdateDisplay(unsigned long count)
     {
@@ -473,7 +477,7 @@ class Counter
         UpdateDisplay(DisplayNumber);
       }
       
-      if (State == FIRED)
+      if (State == DONE)
       {
         Chime->Play();
       }
@@ -630,12 +634,12 @@ class Stopwatch
           else
           {
             Time = MilliSecDuration;
-            State = FIRED;
+            State = DONE;
           }
           UpdateDisplay(DisplayNumber, 0);
         }
       }
-      if (State == FIRED)
+      if (State == DONE)
       {
         Chime->Play();
       }
@@ -826,6 +830,7 @@ void loop() {
       }
       sw7.Update();
       break;
+    
     case 8:
 
       if (backButtonState == LOW)
@@ -836,9 +841,9 @@ void loop() {
       {
         c8.SetState(ACTIVE);
       }
-      else if (actionButtonState == HIGH && actionExternalState == HIGH && backButtonState == HIGH)
+      else if (actionButtonState == HIGH && actionExternalState == HIGH && backButtonState == HIGH && c8.GetState() == ACTIVE)
       {
-        c8.SetState(NONE);
+        c8.SetState(INACTIVE);
       }
 
       c8.Update();
