@@ -453,7 +453,6 @@ class Counter
 
     void Update()
     {
-      CurrentMillis = millis();
       if (State == READY)
       {
         if (CountUpDown == true)
@@ -477,7 +476,7 @@ class Counter
         UpdateDisplay(DisplayNumber);
       }
       
-      if (State == DONE)
+      if (State == INACTIVE && Count % ActiveCountLimit == 0)
       {
         Chime->Play();
       }
