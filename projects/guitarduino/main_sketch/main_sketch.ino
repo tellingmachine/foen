@@ -414,12 +414,24 @@ class Counter
 
     void UpdateDisplay(unsigned long count)
     {
-      LEDMatrix->writeDigitNum(0, 0);
-      LEDMatrix->writeDigitNum(1, 0);
-      LEDMatrix->writeDigitRaw(2, B00000010); //Colon 0x2
-      LEDMatrix->writeDigitNum(3, count / 10);
-      LEDMatrix->writeDigitNum(4, count % 10);
-      LEDMatrix->writeDisplay();
+      if (CountLimit < 100)
+      {
+        unsigned long counts = count / CountLimit;
+        unsigned long currentCount = count % CountLimit;
+        
+        LEDMatrix->writeDigitNum(0, counts / 10);
+        LEDMatrix->writeDigitNum(1, counts % 10);
+        LEDMatrix->writeDigitRaw(2, B00000010); //Colon 0x2
+        LEDMatrix->writeDigitNum(3, currentCount / 10);
+        LEDMatrix->writeDigitNum(4, currentCount % 10);
+        LEDMatrix->writeDisplay();
+      }
+      else
+      {
+        LEDMatrix->println(count);
+        LEDMatrix->writeDisplay();
+      }
+
     }
 
     void SetReadyDisplay()
@@ -475,7 +487,7 @@ class Counter
         DisplayNumber = Count;
         UpdateDisplay(DisplayNumber);
       }
-      
+
       if (State == INACTIVE && Count % ActiveCountLimit == 0)
       {
         Chime->Play();
@@ -829,7 +841,7 @@ void loop() {
       }
       sw7.Update();
       break;
-    
+
     case 8:
 
       if (backButtonState == LOW)
